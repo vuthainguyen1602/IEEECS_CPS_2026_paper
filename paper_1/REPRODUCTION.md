@@ -60,12 +60,12 @@ pdflatex main.tex && bibtex main && pdflatex main.tex && pdflatex main.tex
 
 ## Google Colab
 
-**Code** clone từ Git, **dữ liệu CSV** đọc từ Google Drive:
+**Code** is cloned from Git; **CSV data** is read from Google Drive:
 
-1. Upload 8 file CSV CICIDS2017 lên Drive (ví dụ `MyDrive/ids-2017/`)
-2. Clone repo trên Colab
-3. Mount Drive, sửa `RAW_DATA_DIR` trong `Run_on_Colab.ipynb`
-4. Chạy từng bước trong notebook
+1. Upload the 8 CICIDS2017 CSV files to Drive (e.g. `MyDrive/ids-2017/`)
+2. Clone the repo in Colab
+3. Mount Drive and update `RAW_DATA_DIR` in `Run_on_Colab.ipynb`
+4. Run each step in the notebook
 
 ```bash
 python code/data_preparation.py --input-dir "/content/drive/MyDrive/ids-2017"

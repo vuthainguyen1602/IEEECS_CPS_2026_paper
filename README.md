@@ -72,29 +72,29 @@ python code/populate_latex_tables.py
 
 For the full pipeline (including manuscript compilation), see [`paper_1/REPRODUCTION.md`](paper_1/REPRODUCTION.md).
 
-### Google Colab (code từ Git, dữ liệu từ Drive)
+### Google Colab (code from Git, data from Drive)
 
 ```python
 # 1. Clone code
 !git clone https://github.com/vuthainguyen1602/IEEECS_CPS_2026_paper.git
 
-# 2. Mount Drive (CSV nằm trên Drive, không có trong repo)
+# 2. Mount Drive (CSVs live on Drive, not in the repo)
 from google.colab import drive
 drive.mount('/content/drive')
 
-# 3. Cấu hình đường dẫn
+# 3. Configure paths
 import os
 os.chdir("/content/IEEECS_CPS_2026_paper/paper_1")
-RAW_DATA_DIR = "/content/drive/MyDrive/ids-2017"  # sửa cho đúng
+RAW_DATA_DIR = "/content/drive/MyDrive/ids-2017"  # update as needed
 
-# 4. Cài thư viện và chạy
+# 4. Install dependencies and run
 !pip install -r requirements.txt
 !python code/data_preparation.py --input-dir {RAW_DATA_DIR}
 !python code/hybrid_ids_cicids2017.py
 !python code/knowledge_distillation.py
 ```
 
-> **Code** clone về `/content/IEEECS_CPS_2026_paper/`. **Dữ liệu CSV** upload lên Google Drive (ví dụ `MyDrive/ids-2017/`).
+> **Code** is cloned to `/content/IEEECS_CPS_2026_paper/`. **CSV data** must be uploaded to Google Drive (e.g. `MyDrive/ids-2017/`).
 
 ## Build the Manuscript
 
