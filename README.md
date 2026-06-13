@@ -72,6 +72,16 @@ python code/populate_latex_tables.py
 
 For the full pipeline (including manuscript compilation), see [`paper_1/REPRODUCTION.md`](paper_1/REPRODUCTION.md).
 
+### Google Colab (clone từ Git)
+
+```python
+!git clone https://github.com/vuthainguyen1602/IEEECS_CPS_2026_paper.git
+%cd IEEECS_CPS_2026_paper/paper_1
+!pip install -r requirements.txt
+```
+
+> Tên thư mục sau clone là `IEEECS_CPS_2026_paper`, không phải `IEEECS_CPS_2026`.
+
 ### Google Colab + Google Drive
 
 1. Upload repo lên Drive, ví dụ: `MyDrive/IEEECS_CPS_2026/`
