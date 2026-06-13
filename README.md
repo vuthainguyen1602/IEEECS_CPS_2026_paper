@@ -72,38 +72,29 @@ python code/populate_latex_tables.py
 
 For the full pipeline (including manuscript compilation), see [`paper_1/REPRODUCTION.md`](paper_1/REPRODUCTION.md).
 
-### Google Colab (clone từ Git)
+### Google Colab (code từ Git, dữ liệu từ Drive)
 
 ```python
+# 1. Clone code
 !git clone https://github.com/vuthainguyen1602/IEEECS_CPS_2026_paper.git
-%cd IEEECS_CPS_2026_paper/paper_1
-!pip install -r requirements.txt
-```
 
-> Tên thư mục sau clone là `IEEECS_CPS_2026_paper`, không phải `IEEECS_CPS_2026`.
+# 2. Mount Drive (CSV nằm trên Drive, không có trong repo)
+from google.colab import drive
+drive.mount('/content/drive')
 
-### Google Colab + Google Drive
-
-1. Upload repo lên Drive, ví dụ: `MyDrive/IEEECS_CPS_2026/`
-2. Upload 8 file CSV CICIDS2017 vào `paper_1/data/raw/` (hoặc giữ ở thư mục riêng trên Drive)
-3. Mở [`paper_1/Run_on_Colab.ipynb`](paper_1/Run_on_Colab.ipynb) trên Colab
-4. Mount Drive, sửa `PROJECT_DIR` / `RAW_DATA_DIR` nếu cần, rồi chạy từng cell
-
-Ví dụ đọc CSV từ thư mục riêng trên Drive:
-
-```python
-!python code/data_preparation.py --input-dir "/content/drive/MyDrive/ids-2017"
-```
-
-Hoặc dùng biến môi trường:
-
-```python
+# 3. Cấu hình đường dẫn
 import os
-os.environ["CICIDS2017_RAW_DIR"] = "/content/drive/MyDrive/ids-2017"
-!python code/data_preparation.py
+os.chdir("/content/IEEECS_CPS_2026_paper/paper_1")
+RAW_DATA_DIR = "/content/drive/MyDrive/ids-2017"  # sửa cho đúng
+
+# 4. Cài thư viện và chạy
+!pip install -r requirements.txt
+!python code/data_preparation.py --input-dir {RAW_DATA_DIR}
+!python code/hybrid_ids_cicids2017.py
+!python code/knowledge_distillation.py
 ```
 
-> Colab không cần Java hay Spark. Chỉ cần `pip install -r requirements.txt`.
+> **Code** clone về `/content/IEEECS_CPS_2026_paper/`. **Dữ liệu CSV** upload lên Google Drive (ví dụ `MyDrive/ids-2017/`).
 
 ## Build the Manuscript
 

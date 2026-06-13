@@ -60,14 +60,13 @@ pdflatex main.tex && bibtex main && pdflatex main.tex && pdflatex main.tex
 
 ## Google Colab
 
-1. Upload the repo to Google Drive.
-2. Place CICIDS2017 CSV files in `paper_1/data/raw/` or a separate Drive folder.
-3. Open `Run_on_Colab.ipynb` in Colab, mount Drive, and run each step.
+**Code** clone từ Git, **dữ liệu CSV** đọc từ Google Drive:
 
-Example when CSV files are stored at `MyDrive/ids-2017/`:
+1. Upload 8 file CSV CICIDS2017 lên Drive (ví dụ `MyDrive/ids-2017/`)
+2. Clone repo trên Colab
+3. Mount Drive, sửa `RAW_DATA_DIR` trong `Run_on_Colab.ipynb`
+4. Chạy từng bước trong notebook
 
 ```bash
 python code/data_preparation.py --input-dir "/content/drive/MyDrive/ids-2017"
 ```
-
-Output Parquet files are saved under `paper_1/data/` on Drive and are used by the training scripts in the following steps.
