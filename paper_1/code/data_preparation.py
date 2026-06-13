@@ -1,21 +1,20 @@
 """
 Data Preparation — CICIDS2017 Dataset.
+
+Merges raw CSV files, cleans records, creates binary labels,
+splits into train/test sets, and saves Parquet files for downstream
+experiments.
 """
 
+import argparse
 import os
-from shared_utils import (
-    create_spark_session,
-    clean_column_names,
-    handle_infinity_values,
-    align_schema,
-    F, col, when, StringType,
-)
+import sys
 
-# CONFIGURATION
-INPUT_PATH = "/Users/thainguyenvu/Desktop/ids-2017"
-OUTPUT_DIR = "/Users/thainguyenvu/Desktop/paper_1/data"
-TRAIN_PATH = os.path.join(OUTPUT_DIR, "train_data.parquet")
-TEST_PATH = os.path.join(OUTPUT_DIR, "test_data.parquet")
+import pandas as pd
+from sklearn.model_selection import train_test_split
+
+from config import DATA_DIR, RANDOM_SEED, TEST_PATH, TRAIN_PATH
+from data_utils import align_schema, load_csv_file
 
 CSV_FILES = [
     "Monday-WorkingHours.pcap_ISCX.csv",
@@ -28,109 +27,136 @@ CSV_FILES = [
     "Friday-WorkingHours-Afternoon-PortScan.pcap_ISCX.csv",
 ]
 
+DEFAULT_RAW_DATA_DIR = os.environ.get("CICIDS2017_RAW_DIR", os.path.join(DATA_DIR, "raw"))
 
-# MAIN
-if __name__ == "__main__":
 
-    spark = create_spark_session("IDS_Data_Preparation")
+def merge_csv_files(input_dir: str) -> pd.DataFrame:
+    """Load and merge all CICIDS2017 CSV files from a directory."""
+    merged_df = None
+    unified_columns = None
 
     print("-" * 30)
     print("START MERGING CICIDS2017 DATA")
     print("-" * 30)
 
-    merged_df = None
-    unified_columns = None
+    for index, filename in enumerate(CSV_FILES, start=1):
+        file_path = os.path.join(input_dir, filename)
+        print(f"\n[{index}/{len(CSV_FILES)}] Processing: {filename}")
 
-    for i, filename in enumerate(CSV_FILES):
-        file_path = os.path.join(INPUT_PATH, filename)
-        print(f"\\n[{i+1}/{len(CSV_FILES)}] Processing: {filename}")
+        if not os.path.exists(file_path):
+            print(f"  WARNING: File not found, skipping: {file_path}")
+            continue
 
         try:
-            df = (
-                spark.read.option("header", True)
-                .option("inferSchema", True)
-                .option("escape", '"')
-                .option("multiLine", True)
-                .csv(file_path)
-            )
-
-            row_count = df.count()
-            print(f"  Read successfully: {row_count:,} rows, {len(df.columns)} columns")
-
-            df = clean_column_names(df)
-            df = handle_infinity_values(df)
+            df = load_csv_file(file_path)
+            print(f"  Read successfully: {len(df):,} rows, {len(df.columns)} columns")
 
             if merged_df is None:
-                unified_columns = df.columns
+                unified_columns = df.columns.tolist()
                 merged_df = df
                 print(f"  Initialized schema with {len(unified_columns)} columns")
                 continue
 
             df = align_schema(df, unified_columns)
-            merged_df = merged_df.unionByName(df)
-            print(f"  Merged into total DataFrame")
+            merged_df = pd.concat([merged_df, df], ignore_index=True)
+            print("  Merged into total DataFrame")
 
-        except Exception as e:
-            print(f"  ERROR: {str(e)}")
+        except Exception as exc:
+            print(f"  ERROR: {exc}")
             continue
+
+    if merged_df is None:
+        raise FileNotFoundError(
+            f"No CSV files were loaded from '{input_dir}'. "
+            "Place the CICIDS2017 CSV files there or set CICIDS2017_RAW_DIR."
+        )
 
     print("-" * 30)
     print("MERGE COMPLETED")
     print("-" * 30)
+    return merged_df
 
-    # Cleaning
-    print(f"\\nTotal rows before cleaning: {merged_df.count():,}")
-    merged_df = merged_df.dropDuplicates()
-    merged_df = merged_df.dropna()
-    print(f"Total rows after cleaning:  {merged_df.count():,}")
 
-    # Create binary labels
-    df = merged_df.withColumn(
-        "label_binary",
-        when(col("label") == "BENIGN", 0).otherwise(1),
+def prepare_dataset(df: pd.DataFrame) -> pd.DataFrame:
+    """Clean records, create binary labels, and report class distribution."""
+    print(f"\nTotal rows before cleaning: {len(df):,}")
+    df = df.drop_duplicates().dropna()
+    print(f"Total rows after cleaning:  {len(df):,}")
+
+    if "label" not in df.columns:
+        raise KeyError("Expected a 'label' column after column-name normalisation.")
+
+    df = df.copy()
+    df["label_binary"] = (df["label"] != "BENIGN").astype(int)
+
+    print("\nLabel distribution:")
+    print(df["label"].value_counts().head(20).to_string())
+
+    print("\nBinary label distribution:")
+    print(df["label_binary"].value_counts().sort_index().to_string())
+
+    exclude_cols = {
+        "label", "label_binary", "source_ip", "destination_ip",
+        "flow_id", "timestamp", "protocol",
+    }
+    numeric_cols = df.select_dtypes(include="number").columns
+    feature_cols = [col for col in numeric_cols if col not in exclude_cols]
+    print(f"\nNumber of numeric features: {len(feature_cols)}")
+
+    return df
+
+
+def save_splits(df: pd.DataFrame, train_path: str, test_path: str) -> None:
+    """Split the dataset and persist Parquet files."""
+    train_df, test_df = train_test_split(
+        df,
+        test_size=0.2,
+        random_state=RANDOM_SEED,
+        shuffle=True,
     )
 
-    print("\\nLabel distribution:")
-    df.groupBy("label").count().orderBy(F.desc("count")).show(20, truncate=False)
+    print(f"\nTraining set: {len(train_df):,} samples")
+    print(f"Test set:     {len(test_df):,} samples")
 
-    print("Binary label distribution:")
-    df.groupBy("label_binary").count().orderBy("label_binary").show()
+    os.makedirs(os.path.dirname(train_path), exist_ok=True)
 
-    # Feature selection
-    exclude_cols = ["label", "label_binary", "source_ip", "destination_ip",
-                    "flow_id", "timestamp", "protocol"]
-    feature_cols = [
-        c for c in df.columns
-        if c not in exclude_cols
-        and dict(df.dtypes)[c] in ["double", "float", "int", "bigint"]
-    ]
-    print(f"Number of numeric features: {len(feature_cols)}")
+    print("\nSaving to parquet...")
+    train_df.to_parquet(train_path, index=False)
+    print(f"  Saved: {train_path}")
 
-    # Split
-    df = df.cache()
-    df.count()
+    test_df.to_parquet(test_path, index=False)
+    print(f"  Saved: {test_path}")
 
-    train_df, test_df = df.randomSplit([0.8, 0.2], seed=42)
 
-    train_count = train_df.count()
-    test_count = test_df.count()
-    print(f"\\nTraining set: {train_count:,} samples")
-    print(f"Test set:     {test_count:,} samples")
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Prepare CICIDS2017 train/test Parquet files.")
+    parser.add_argument(
+        "--input-dir",
+        default=DEFAULT_RAW_DATA_DIR,
+        help="Directory containing raw CICIDS2017 CSV files "
+             "(default: paper_1/data/raw or CICIDS2017_RAW_DIR).",
+    )
+    parser.add_argument("--train-path", default=TRAIN_PATH, help="Output path for training Parquet.")
+    parser.add_argument("--test-path", default=TEST_PATH, help="Output path for test Parquet.")
+    return parser.parse_args()
 
-    # Save to parquet
-    print(f"\\nSaving to parquet...")
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-    train_df.write.mode("overwrite").parquet(TRAIN_PATH)
-    print(f"  Saved: {TRAIN_PATH}")
+def main() -> None:
+    args = parse_args()
 
-    test_df.write.mode("overwrite").parquet(TEST_PATH)
-    print(f"  Saved: {TEST_PATH}")
+    merged_df = merge_csv_files(args.input_dir)
+    prepared_df = prepare_dataset(merged_df)
+    save_splits(prepared_df, args.train_path, args.test_path)
 
     print("-" * 30)
     print("DATA PREPARATION COMPLETED")
     print("-" * 30)
     print("You can now run any experiment file, including the hybrid base model script.")
 
-    spark.stop()
-    print("Spark Session closed.")
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as exc:
+        print(f"Data preparation failed: {exc}", file=sys.stderr)
+        sys.exit(1)

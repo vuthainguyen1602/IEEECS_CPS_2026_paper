@@ -3,9 +3,8 @@ pandas
 scikit-learn
 xgboost
 lightgbm
-imblearn
+imbalanced-learn
 matplotlib
 seaborn
 pyarrow
 joblib
-matplotlib
