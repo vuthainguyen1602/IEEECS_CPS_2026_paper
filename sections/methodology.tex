@@ -1,0 +1,64 @@
+\section{Phương pháp đề xuất}
+Phương pháp đề xuất gồm hai giai đoạn chính: (1) Tiền xử lý dữ liệu và huấn luyện mô hình Stacking giáo viên trên dữ liệu đã cân bằng bằng SMOTEENN; (2) Chưng cất tri thức (KD) từ mô hình giáo viên sang cây quyết định học viên gọn nhẹ.
+
+\subsection{Tiền xử lý và xử lý mất cân bằng lớp}
+Bộ dữ liệu CICIDS2017 gồm hơn 78 đặc trưng lưu lượng mạng với mức độ biến thiên lớn và một số giá trị thiếu (\texttt{NaN}), vô hạn (\texttt{Inf}). 
+\subsubsection{Làm sạch dữ liệu và Co giãn đặc trưng} Các bản ghi chứa giá trị không hợp lệ (\texttt{NaN}, \texttt{Inf}) hoặc trùng lặp bị loại bỏ. Chúng tôi sử dụng phương pháp Robust Scaling để chuẩn hóa dữ liệu, giúp hạn chế ảnh hưởng của các giá trị ngoại lệ (outliers) phổ biến trong lưu lượng mạng:
+\begin{equation}
+x_{norm} = \frac{x_i - \tilde{x}}{\text{IQR}(X)}
+\end{equation}
+trong đó $\tilde{x}$ là trung vị và $\text{IQR}(X)$ là khoảng tứ phân vị của đặc trưng $X$.
+
+\subsubsection{Cân bằng lớp bằng SMOTEENN}
+Để xử lý hiện tượng mất cân bằng dữ liệu nghiêm trọng (ví dụ: các lớp tấn công thiểu số chiếm dưới 0,01\% dữ liệu), chúng tôi sử dụng kỹ thuật SMOTEENN kết hợp: \textbf{SMOTE}~\cite{chawla2002smote} sinh thêm mẫu giả lập cho các lớp thiểu số dựa trên việc nội suy giữa mẫu hiện tại và $k$ láng giềng gần nhất; và \textbf{ENN}~\cite{wilson1972asymptotic} loại bỏ các mẫu có nhãn khác biệt với đa số trong 3 láng giềng gần nhất để làm sạch ranh giới phân loại và loại bỏ nhiễu. Quy trình này tạo ra tập dữ liệu sạch, cân bằng và có ranh giới phân lớp rõ ràng.
+
+\subsection{Kiến trúc Stacking kết hợp (Mô hình giáo viên)}
+Chúng tôi xây dựng một kiến trúc Stacking 2 tầng để tận dụng ưu điểm của boosting và bagging:
+\subsubsection{Các mô hình cơ sở (Tầng 0)} 
+Gồm ba bộ phân loại dựa trên cây phổ biến và hiệu quả nhất cho dữ liệu bảng: \textbf{XGBoost}~\cite{chen2016xgboost} hoạt động bằng cách giảm thiểu hàm mục tiêu kết hợp hàm mất mát lồi $l$ và thành phần phạt chính quy hóa $\Omega$:
+\begin{equation}
+Obj^{(t)} = \sum_{i=1}^{n} l\left(y_i, \hat{y}_i^{(t-1)} + f_t(x_i)\right) + \Omega(f_t)
+\end{equation}
+\textbf{LightGBM}~\cite{ke2017lightgbm} sử dụng cơ chế GOSS và EFB giúp tăng tốc độ huấn luyện trên tập dữ liệu lớn; và \textbf{Random Forest}~\cite{breiman2001random} sử dụng phương pháp bagging tạo ra các cây quyết định song song để giảm phương sai dự đoán:
+\begin{equation}
+\hat{y}_{RF}(x) = \frac{1}{T} \sum_{t=1}^{T} h_t(x)
+\end{equation}
+trong đó $h_t$ đại diện cho từng cây quyết định riêng lẻ.
+
+\subsubsection{Mô hình tổng hợp (Tầng 1)} 
+Đầu ra xác suất dự đoán từ các mô hình Tầng 0 được ghép thành ma trận đặc trưng mới $Z_i = [P_{XGB}(y|x_i), P_{LGBM}(y|x_i), P_{RF}(y|x_i)]$. Một bộ phân loại Hồi quy Logistic (Logistic Regression) được huấn luyện trên $Z_i$ để tối ưu hóa trọng số tổng hợp cuối cùng qua hàm sigmoid:
+\begin{equation}
+\hat{Y} = \sigma(W \cdot Z_i + b) = \frac{1}{1 + e^{-(W \cdot Z_i + b)}}
+\end{equation}
+Stacking giúp khai thác tính bổ trợ giữa các mô hình, nâng cao độ chính xác phát hiện và giảm thiểu dương tính giả.
+
+\subsection{Chưng cất tri thức sang mô hình học viên}
+Mặc dù mô hình Stacking giáo viên ($\mathcal{E}$) rất mạnh, việc vận hành đồng thời 3 mô hình cây lớn tiêu tốn nhiều tài nguyên và độ trễ cao khi triển khai tại biên. Do đó, chúng tôi áp dụng chưng cất tri thức (KD) để nén mô hình giáo viên thành một cây quyết định học viên ($M_{student}$) gọn nhẹ và nông (với tham số \texttt{max\_depth} giới hạn).
+
+Quy trình chưng cất:
+1) Cho mô hình giáo viên dự đoán trên tập dữ liệu $X_{train}$ để thu được nhãn xác suất mềm $\hat{Y}_{teacher}$.
+2) Huấn luyện mô hình học viên $M_{student}$ bắt chước trực tiếp nhãn $\hat{Y}_{teacher}$ thông qua tối ưu hóa hàm mất mát:
+\begin{equation}
+\min_{\theta_{student}} \sum_{i=1}^{N} \mathcal{L}\left( M_{student}(x_i; \theta_{student}), \hat{Y}_{teacher}^{(i)} \right)
+\end{equation}
+Nhờ học trực tiếp ranh giới quyết định đã được làm mịn từ giáo viên, cây quyết định học viên đạt độ chính xác gần tương đương mô hình giáo viên phức tạp, nhưng giảm thiểu tối đa kích thước lưu trữ và thời gian suy luận thực tế.
+
+\begin{algorithm}[ht]
+\DontPrintSemicolon
+\SetAlgoLined
+\KwIn{Tập đặc trưng cân bằng $X_{train}$, Nhãn gốc $Y_{train}$, Mô hình giáo viên đã huấn luyện $\mathcal{E}$, Độ sâu tối đa của cây học viên $d$}
+\KwOut{Mô hình học viên đã tối ưu hóa $M_{student}$}
+\tcp{Bước 1: Tạo nhãn mục tiêu từ mô hình giáo viên}
+$\hat{Y}_{teacher} \leftarrow \emptyset$ \;
+\For{$i = 1 \dots N$}{
+    $p_i \leftarrow \mathcal{E}.predict\_proba(x_i)$ \tcp*{Lấy xác suất đầu ra}
+    $\hat{y}^{(i)}_{teacher} \leftarrow \arg\max(p_i)$ \tcp*{Chuyển sang nhãn chính xác}
+    $\hat{Y}_{teacher} \leftarrow \hat{Y}_{teacher} \cup \{\hat{y}^{(i)}_{teacher}\}$ \;
+}
+\tcp{Bước 2: Huấn luyện mô hình học viên}
+Khởi tạo Cây quyết định $M_{student}$ với tham số max\_depth=$d$ \;
+$M_{student}.fit(X_{train}, \hat{Y}_{teacher})$ \;
+\Return $M_{student}$ \;
+\caption{Chưng cất tri thức giáo viên--học viên}
+\label{algo:kd}
+\end{algorithm}

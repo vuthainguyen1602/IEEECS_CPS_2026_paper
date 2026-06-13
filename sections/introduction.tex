@@ -1,0 +1,10 @@
+\section{Giới thiệu}
+\IEEEPARstart{S}{ự} phát triển của Internet Vạn vật (IoT) và điện toán biên (edge computing) kéo theo các cuộc tấn công mạng ngày càng tinh vi. Hệ thống Phát hiện Xâm nhập Mạng (NIDS) đóng vai trò phòng thủ then chốt nhưng đối mặt với ba thách thức đồng thời: dữ liệu thực tế cực kỳ mất cân bằng, yêu cầu phản hồi thời gian thực và tài nguyên tính toán tại thiết bị biên rất hạn chế.
+
+Các mô hình học sâu lai hay hệ thống phân tán lớn tuy đạt độ chính xác cao nhưng tiêu tốn tài nguyên, độ trễ suy luận lớn, khó triển khai tại biên. Ngược lại, các mô hình gọn nhẹ thường có tỉ lệ cảnh báo giả (FPR) cao và độ nhạy (Recall) thấp với các lớp tấn công thiểu số.
+
+Để giải quyết đồng thời các hạn chế trên, bài báo này đề xuất một giải pháp NIDS hai giai đoạn: Giai đoạn 1 (Độ chính xác cao) xây dựng mô hình giáo viên mạnh theo kiến trúc Stacking kết hợp XGBoost, LightGBM và Random Forest, huấn luyện trên tập dữ liệu được cân bằng và làm sạch bằng kỹ thuật SMOTEENN nhằm nhận diện tốt ranh giới phi tuyến phức tạp và giảm thiểu tối đa cảnh báo giả; Giai đoạn 2 (Gọn nhẹ cho biên) áp dụng chưng cất tri thức (Knowledge Distillation) từ mô hình Stacking giáo viên sang cây quyết định nông học viên kế thừa năng lực khái quát hóa của giáo viên nhưng đạt tốc độ suy luận cực nhanh và kích thước siêu nhỏ, tối ưu cho thiết bị biên.
+
+Các đóng góp chính của bài báo: (1) Xây dựng quy trình xử lý mất cân bằng SMOTEENN hiệu quả trên bộ dữ liệu CICIDS2017 giúp nhận diện tốt tấn công thiểu số; (2) Đề xuất mô hình Stacking kết hợp boosting và bagging giúp tăng độ chính xác phát hiện; (3) Áp dụng chưng cất tri thức giáo viên-học viên giúp giảm mạnh độ trễ và bộ nhớ suy luận tại biên; (4) Kết quả thực nghiệm chứng minh sự cân bằng tối ưu giữa hiệu năng phát hiện xâm nhập và chi phí triển khai thực tế.
+
+Cấu trúc bài viết: Phần II điểm qua các nghiên cứu liên quan. Phần III trình bày phương pháp đề xuất. Phần IV mô tả thiết lập thực nghiệm. Phần V phân tích kết quả thực nghiệm và Phần VI kết luận.

@@ -1,0 +1,10 @@
+\section{Thảo luận và Kết luận}
+Bài báo đề xuất giải pháp phát hiện xâm nhập mạng (NIDS) hai giai đoạn kết hợp SMOTEENN, Stacking và chưng cất tri thức (KD) tối ưu cho môi trường biên.
+
+Thực nghiệm trên CICIDS2017 cho thấy mô hình giáo viên stacking đạt F1 $0,9970$. Mô hình học viên là cây quyết định nông sau chưng cất vẫn duy trì hiệu năng cao (Acc $99,65\%$, F1 $0,9918$), đồng thời giảm thời gian suy luận \textbf{36,94 lần} (còn $0,16$ ms/1k mẫu) và nén dung lượng bộ nhớ \textbf{1.485 lần} (còn $0,0244$ MB). Kết quả này khẳng định khả năng nén tri thức vượt trội và tính khả thi của giải pháp tại biên.
+
+Trong tương lai, chúng tôi sẽ mở rộng mô hình sang phân loại đa lớp, tích hợp cơ chế học thích ứng liên tục và thử nghiệm trực tiếp trên phần cứng IoT thực tế (Raspberry Pi, Jetson).
+
+\appendix
+\section*{Lời cảm ơn}
+Tác giả xin gửi lời cảm ơn tới Viện An ninh mạng Canada (Canadian Institute for Cybersecurity) đã cung cấp bộ dữ liệu CICIDS2017.

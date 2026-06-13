@@ -1,0 +1,24 @@
+\section{Thảo luận và Kết luận}
+Nghiên cứu này đã khảo sát thách thức quan trọng trong việc triển khai các Hệ thống Phát hiện Xâm nhập (IDS) có độ chính xác cao trong các ràng buộc khắt khe về độ trễ của môi trường điện toán Biên và IoT. Để giải quyết bài toán nan giải "độ chính xác so với hiệu quả"—đặc biệt là trong điều kiện mất cân bằng dữ liệu cực đoan—chúng tôi đã giới thiệu một khung Chưng cất Tri thức hai giai đoạn mới.
+
+\subsection{Các phát hiện chính và Ý nghĩa thực tiễn}
+Quy trình đề xuất của chúng tôi đã liên kết thành công việc cân bằng ở mức độ dữ liệu, sự đa dạng ở mức độ mô hình và việc nén mô hình phù hợp với môi trường biên vào một kiến trúc thống nhất. Đầu tiên, bằng việc sử dụng SMOTEENN, chúng tôi đã tái cấu trúc hiệu quả một không gian huấn luyện cân bằng và không có nhiễu. Kết hợp với Kiến trúc Ensemble lai đồ sộ (Teacher), kết quả đã chứng minh độ chính xác phát hiện hiện đại, giảm thiểu đáng kể tỷ lệ Dương tính giả để giảm bớt "sự mệt mỏi do cảnh báo" trong các trung tâm điều hành an ninh (SOC) trong khi tối đa hóa tỷ lệ triệu hồi đối với các cuộc tấn công thiểu số.
+
+Quan trọng hơn, việc thực hiện Chưng cất Tri thức (Phần V-G) đã chứng minh rằng các ranh giới quyết định phức tạp, đa chiều mà một hệ thống ensemble tốn kém tài nguyên học được có thể được chuyển giao thành công sang một Cây Quyết định nhẹ (Student). Mô hình Student sau khi chưng cất vẫn duy trì được độ chính xác cạnh tranh cao (tương đương với Teacher) trong khi gia tăng tốc độ suy luận lên nhiều cấp độ. Ý nghĩa thực tiễn của nghiên cứu này là rất lớn: khung giải pháp của chúng tôi cung cấp một con đường trực tiếp để triển khai khả năng phát hiện xâm nhập cấp độ ensemble chuyên sâu lên các cổng biên hạn chế về tài nguyên.
+
+\subsection{Tính ổn định của Kiểm định chéo}
+Thông qua Kiểm định chéo 5 lớp phân tầng (Phần V-F), chúng tôi đã chứng minh rằng khung đề xuất đạt được hiệu năng ổn định trên các phân vùng dữ liệu khác nhau. Độ lệch chuẩn thấp xác nhận rằng kết quả của chúng tôi đạt được không phải do sự may mắn từ một lần chia tập huấn luyện/kiểm tra thuận lợi, cung cấp bằng chứng mạnh mẽ về khả năng tổng quát hóa.
+
+\subsection{Hạn chế và Hướng nghiên cứu tương lai}
+Mặc dù kiến trúc hai giai đoạn đề xuất đạt được độ chính xác và độ trễ suy luận hiện đại, nhưng hiện tại nó mới chỉ tập trung vào phân loại nhị phân (lành tính so với tấn công). Việc xác định chính xác các loại hình tấn công cụ thể trong các môi trường biên thời gian thực cần được khảo sát thêm. Ngoài ra, việc triển khai các mô hình KD cực đoan trực tiếp lên các phần cứng chuyên dụng (ví dụ: FPGA hoặc Edge TPU) có thể gặp phải những thách thức biên dịch đặc thù của phần cứng.
+
+Các nghiên cứu trong tương lai sẽ tập trung vào:
+\begin{enumerate}
+    \item \textbf{Chưng cất đa lớp cho Edge:} Mở rộng khung giải pháp để chưng cất các ranh giới phân loại đa lớp nhằm phân loại chi tiết các cuộc tấn công (ví dụ: DoS, DDoS, Web Attacks) tại biên.
+    \item \textbf{Học tập liên tục:} Triển khai các cơ chế học tập thích ứng để cập nhật định kỳ mô hình Teacher chống lại các mối đe dọa zero-day và thực hiện chưng cất lại mô hình Student mà không làm gián đoạn các hoạt động tại biên.
+    \item \textbf{Xác thực phần cứng thực tế (Hardware-in-the-Loop):} Kiểm tra độ trễ và mức tiêu thụ năng lượng của mô hình Student trực tiếp trên các cổng IoT vật lý (ví dụ: Raspberry Pi 4, NVIDIA Jetson Nano).
+\end{enumerate}
+
+\appendix
+\section{Lời cảm ơn}
+Tác giả xin gửi lời cảm ơn tới Viện An ninh mạng Canada (Canadian Institute for Cybersecurity) đã cung cấp bộ dữ liệu CICIDS2017.

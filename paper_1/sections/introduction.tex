@@ -1,0 +1,26 @@
+\section{Giới thiệu}
+\IEEEPARstart{S}{ự} mở rộng nhanh chóng của hệ sinh thái Internet Vạn vật (IoT) và cơ sở hạ tầng điện toán biên (edge computing) đã kéo theo sự leo thang tương ứng của các cuộc tấn công mạng tinh vi. Đứng đầu trong việc bảo vệ các ranh giới phân tán này là các Hệ thống Phát hiện Xâm nhập Mạng (NIDS). Trong những năm gần đây, các phương pháp tiếp cận dựa trên dữ liệu tận dụng kiến trúc Học máy (ML) và Học sâu (DL) phức tạp đã thay thế các hệ thống dựa trên chữ ký truyền thống. Tuy nhiên, việc chuyển đổi các mô hình lý thuyết tiên tiến này sang triển khai thực tế trên hệ thống biên đã bộc lộ một bài toán nan giải: sự xung đột giữa độ chính xác phát hiện trong môi trường mất cân bằng dữ liệu cao và các ràng buộc nghiêm ngặt về độ trễ của điện toán biên.
+
+\subsection{Đặt vấn đề: Độ chính xác so với Hiệu quả}
+Lưu lượng mạng trong thực tế vốn dĩ mất cân bằng một cách trầm trọng. Các gói tin lành tính chiếm đại đa số các luồng mạng, trong khi các xâm nhập độc hại—đặc biệt là các cuộc tấn công tinh vi, có mục tiêu—chỉ chiếm một phần rất nhỏ. Các mô hình học máy đơn lẻ, nhẹ được huấn luyện trên dữ liệu này thường có xu hướng tối đa hóa độ chính xác tổng thể, dẫn đến tỷ lệ Cảnh báo sai (False Positive - FP) cao không thể chấp nhận được và tỷ lệ triệu hồi (recall) cực kỳ thấp đối với các cuộc tấn công thuộc lớp thiểu số quan trọng.
+
+Để khắc phục điều này, các nghiên cứu hiện đại ngày càng phụ thuộc vào các mô hình ensemble đồ sộ, tốn kém tài nguyên tính toán hoặc các mạng thần kinh sâu để xác định chính xác các ranh giới quyết định phức tạp. Mặc dù có độ chính xác cao, các kiến trúc khổng lồ này đòi hỏi tài nguyên tính toán (FLOPS) và bộ nhớ đáng kể. Do đó, chúng gây ra độ trễ suy luận quá mức, khiến chúng không khả thi để triển khai thời gian thực trên các cổng IoT (gateways) và tường lửa biên vốn hạn chế về tài nguyên, nơi yêu cầu thời gian phản hồi dưới một phần nghìn giây là bắt buộc.
+
+\subsection{Giải pháp đề xuất: Khung quản lý hai giai đoạn}
+Để khắc phục những thiếu sót của các mô hình nhẹ (độ chính xác thấp trên dữ liệu mất cân bằng) và các mô hình ensemble đồ sộ (độ trễ cao), bài báo này đề xuất một khung IDS hai giai đoạn mới dựa trên kỹ thuật Chưng cất Tri thức (Knowledge Distillation).
+
+Thứ nhất, chúng tôi ưu tiên độ chính xác phát hiện tuyệt đối bằng cách xây dựng một mô hình "Giáo viên" (Teacher) mạnh mẽ: một tập hợp Stacking Ensemble lai. Chúng tôi tích hợp hệ thống hiệu chỉnh lỗi tuần tự của tăng cường gradient (XGBoost, LightGBM) với việc tổng hợp song song của Random Forest, được huấn luyện trên một không gian đặc trưng được tái cân bằng về mặt toán học thông qua kỹ thuật SMOTEENN. Mô hình Teacher này thiết lập hiệu quả các ranh giới quyết định phi tuyến tính có độ chính xác cao, trung hòa các vấn đề do mất cân bằng dữ liệu gây ra.
+
+Thứ hai, chúng tôi giải quyết nút thắt trong triển khai tại biên bằng cách sử dụng cơ chế Chưng cất Tri thức Giáo viên - Học sinh (Teacher-Student). Chúng tôi nén tri thức xác suất phức tạp ("nhãn mềm") của mô hình ensemble Teacher đồ sộ vào một Cây Quyết định "Học sinh" (Student) nhẹ. Điều này cho phép mô hình Student kế thừa khả năng tổng quát hóa tiên tiến của Teacher trong khi chỉ yêu cầu một phần nhỏ tài nguyên tính toán trong quá trình suy luận.
+
+\subsection{Các đóng góp chính}
+Các đóng góp chính của bài báo này được tóm tắt như sau:
+\begin{enumerate}
+    \item \textbf{Giảm thiểu sự mất cân bằng cực đoan:} Chúng tôi xây dựng một quy trình lấy mẫu cân bằng tiên tiến (SMOTEENN) trên bộ dữ liệu CICIDS2017 để khắc phục sự chênh lệch lớn giữa các lớp mà không làm nhiễu ranh giới quyết định.
+    \item \textbf{Mô hình Ensemble Teacher mạnh mẽ:} Chúng tôi xây dựng một mô hình stacking ensemble hiện đại tối đa hóa sự đa dạng của thuật toán bằng cách kết hợp các mô hình boosting (XGBoost, LightGBM) và bagging (Random Forest) của chúng tôi, giúp giảm thiểu đáng kể tỷ lệ Cảnh báo sai.
+    \item \textbf{Chưng cất tri thức tối ưu cho Edge:} Chúng tôi đề xuất một ứng dụng mới của Chưng cất tri thức cho NIDS, nén thành công mô hình ensemble Teacher đồ sộ thành một cây Student hiệu quả cao, giảm độ trễ suy luận xuống nhiều cấp độ.
+    \item \textbf{Tối ưu hóa Độ chính xác - Độ trễ:} Các đánh giá thực nghiệm sâu rộng cho thấy khung chưng cất của chúng tôi cung cấp một giải pháp có khả năng mở rộng cao, đạt độ chính xác $>99\%$ trong khi đáp ứng được các ràng buộc khắt khe về thời gian của việc phát hiện mối đe dọa dựa trên biên.
+\end{enumerate}
+
+\subsection{Cấu trúc của bài báo}
+Phần còn lại của bài báo được tổ chức như sau: Phần II xem xét các tài liệu liên quan và làm nổi bật các khoảng trống nghiên cứu hiện nay về triển khai biên. Phần III trình bày chi tiết phương pháp luận, bao gồm cân bằng dữ liệu, xây dựng ensemble và chưng cất tri thức. Phần IV mô tả thiết lập thực nghiệm, trong khi Phần V trình bày một phân tích so sánh sâu rộng về độ chính xác và hiệu quả suy luận. Cuối cùng, Phần VI đưa ra kết luận của bài báo.
