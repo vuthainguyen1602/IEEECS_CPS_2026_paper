@@ -9,7 +9,8 @@ def format_num(val, precision=4):
     return f"{val:.{precision}f}".replace(".", ",")
 
 def populate_latex():
-    from config import RESULTS_DIR, LATEX_DIR
+    from config import RESULTS_DIR, PROJECT_ROOT
+    LATEX_DIR = os.path.join(os.path.dirname(PROJECT_ROOT), "sections")
     results_path = os.path.join(RESULTS_DIR, "all_results.json")
     latex_path = os.path.join(LATEX_DIR, "results.tex")
     
@@ -102,7 +103,7 @@ def populate_latex():
     latex_content = re.sub(pattern, replacement, latex_content)
 
     # Knowledge Distillation
-    kd_path = "/Users/thainguyenvu/Desktop/paper_1/results/kd_results.json"
+    kd_path = os.path.join(RESULTS_DIR, "kd_results.json")
     if os.path.exists(kd_path):
         with open(kd_path, 'r') as f:
             kd_data = json.load(f)

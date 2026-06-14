@@ -9,39 +9,56 @@ x_{norm} = \frac{x_i - \tilde{x}}{\text{IQR}(X)}
 \end{equation}
 trong đó $\tilde{x}$ là trung vị và $\text{IQR}(X)$ là khoảng tứ phân vị của đặc trưng $X$.
 
-\subsubsection{Cân bằng lớp bằng SMOTEENN}
-Để xử lý hiện tượng mất cân bằng dữ liệu nghiêm trọng (ví dụ: các lớp tấn công thiểu số chiếm dưới 0,01\% dữ liệu), chúng tôi sử dụng kỹ thuật SMOTEENN kết hợp: \textbf{SMOTE}~\cite{chawla2002smote} sinh thêm mẫu giả lập cho các lớp thiểu số dựa trên việc nội suy giữa mẫu hiện tại và $k$ láng giềng gần nhất; và \textbf{ENN}~\cite{wilson1972asymptotic} loại bỏ các mẫu có nhãn khác biệt với đa số trong 3 láng giềng gần nhất để làm sạch ranh giới phân loại và loại bỏ nhiễu. Quy trình này tạo ra tập dữ liệu sạch, cân bằng và có ranh giới phân lớp rõ ràng.
+\subsubsection{Chiến lược lấy mẫu lai (RUS + SMOTEENN)}
+Để xử lý hiện tượng mất cân bằng dữ liệu cực đoan (các lớp tấn công thiểu số chiếm $<0,01\%$ dữ liệu) và giảm thiểu chi phí tính toán khổng lồ khi dữ liệu quá lớn, chúng tôi đề xuất chiến lược lấy mẫu lai kết hợp. Đầu tiên, kỹ thuật Random Under-sampling (RUS) được áp dụng để thu gọn ngẫu nhiên lớp đa số (hơn 2 triệu mẫu) xuống mức cân bằng tương đối, giúp loại bỏ lượng lớn các mẫu dư thừa ở xa ranh giới quyết định. 
+
+Sau đó, kỹ thuật SMOTEENN được áp dụng trên tập dữ liệu đã thu gọn: \textbf{SMOTE}~\cite{chawla2002smote} sinh thêm mẫu giả lập cho các lớp thiểu số dựa trên việc nội suy tuyến tính; và \textbf{ENN}~\cite{wilson1972asymptotic} loại bỏ các mẫu có nhãn khác biệt với đa số trong 3 láng giềng gần nhất để làm sạch ranh giới phân loại. Sự kết hợp tinh tế giữa RUS và SMOTEENN không chỉ giảm triệt để thời gian tính toán, mà còn tạo ra tập dữ liệu cân bằng, không có nhiễu với ranh giới phân lớp duy trì độ sắc nét tối đa.
+
+\begin{algorithm}[hbt!]
+\SetAlgoLined
+\KwIn{Bộ dữ liệu lưu lượng mạng thô $\mathcal{D} = \{(x_1, y_1), \dots, (x_N, y_N)\}$}
+\KwOut{Bộ dữ liệu đã được làm sạch, co giãn và cân bằng $\mathcal{D}_{bal}$}
+
+\tcc{Bước 1: Làm sạch dữ liệu và Co giãn đặc trưng}
+Loại bỏ các bản ghi chứa \texttt{NaN}, \texttt{Inf}\;
+Áp dụng Robust Scaler: $x'_i \leftarrow \frac{x_i - \tilde{x}}{\text{IQR}}$\;
+Chia dữ liệu thành lớp đa số $\mathcal{S}_{maj}$ và thiểu số $\mathcal{S}_{min}$\;
+
+\tcc{Bước 2: Chiến lược lấy mẫu lai}
+\tcc{2.1: Tiền giảm mẫu bằng RUS}
+Giảm ngẫu nhiên $\mathcal{S}_{maj}$ xuống kích thước tương đương lớp thiểu số để tạo $\mathcal{S}'_{maj}$\;
+
+\tcc{2.2: Sinh dữ liệu SMOTE}
+Sử dụng SMOTE sinh thêm mẫu thiểu số $\mathcal{S}_{syn}$ từ $\mathcal{S}_{min}$\;
+$\mathcal{D}_{SMOTE} \leftarrow \mathcal{S}'_{maj} \cup \mathcal{S}_{min} \cup \mathcal{S}_{syn}$\;
+
+\tcc{2.3: Làm sạch ranh giới bằng ENN}
+\ForEach{$(x_i, y_i) \in \mathcal{D}_{SMOTE}$}{
+    Tìm 3-láng giềng gần nhất $N_3(x_i)$\;
+    \If{lớp đa số của $N_3(x_i) \neq y_i$}{
+        Loại bỏ $(x_i, y_i)$ khỏi $\mathcal{D}_{SMOTE}$ \tcp*{Lọc nhiễu}
+    }
+}
+$\mathcal{D}_{bal} \leftarrow \mathcal{D}_{SMOTE}$\;
+
+\Return{$\mathcal{D}_{bal}$}
+\caption{Tiền xử lý dữ liệu và Cân bằng lai (RUS + SMOTEENN)}
+\label{algo:preprocessing}
+\end{algorithm}
 
 \subsection{Kiến trúc Stacking kết hợp (Mô hình giáo viên)}
 Chúng tôi xây dựng một kiến trúc Stacking 2 tầng để tận dụng ưu điểm của boosting và bagging:
 \subsubsection{Các mô hình cơ sở (Tầng 0)} 
-Gồm ba bộ phân loại dựa trên cây phổ biến và hiệu quả nhất cho dữ liệu bảng: \textbf{XGBoost}~\cite{chen2016xgboost} hoạt động bằng cách giảm thiểu hàm mục tiêu kết hợp hàm mất mát lồi $l$ và thành phần phạt chính quy hóa $\Omega$:
-\begin{equation}
-Obj^{(t)} = \sum_{i=1}^{n} l\left(y_i, \hat{y}_i^{(t-1)} + f_t(x_i)\right) + \Omega(f_t)
-\end{equation}
-\textbf{LightGBM}~\cite{ke2017lightgbm} sử dụng cơ chế GOSS và EFB giúp tăng tốc độ huấn luyện trên tập dữ liệu lớn; và \textbf{Random Forest}~\cite{breiman2001random} sử dụng phương pháp bagging tạo ra các cây quyết định song song để giảm phương sai dự đoán:
-\begin{equation}
-\hat{y}_{RF}(x) = \frac{1}{T} \sum_{t=1}^{T} h_t(x)
-\end{equation}
-trong đó $h_t$ đại diện cho từng cây quyết định riêng lẻ.
+Gồm ba bộ phân loại dựa trên cây hiệu quả cho dữ liệu bảng: \textbf{XGBoost}~\cite{chen2016xgboost} và \textbf{LightGBM}~\cite{ke2017lightgbm} tối ưu hóa hàm mục tiêu kết hợp hàm mất mát lồi và thành phần phạt chính quy hóa để sửa lỗi tuần tự, kết hợp cơ chế GOSS và EFB tăng tốc độ huấn luyện; và \textbf{Random Forest}~\cite{breiman2001random} sử dụng kỹ thuật bagging tổng hợp các cây quyết định song song để giảm phương sai.
 
 \subsubsection{Mô hình tổng hợp (Tầng 1)} 
-Đầu ra xác suất dự đoán từ các mô hình Tầng 0 được ghép thành ma trận đặc trưng mới $Z_i = [P_{XGB}(y|x_i), P_{LGBM}(y|x_i), P_{RF}(y|x_i)]$. Một bộ phân loại Hồi quy Logistic (Logistic Regression) được huấn luyện trên $Z_i$ để tối ưu hóa trọng số tổng hợp cuối cùng qua hàm sigmoid:
-\begin{equation}
-\hat{Y} = \sigma(W \cdot Z_i + b) = \frac{1}{1 + e^{-(W \cdot Z_i + b)}}
-\end{equation}
+Đầu ra xác suất dự đoán từ Tầng 0 được ghép thành ma trận đặc trưng mới $Z_i = [P_{XGB}(y|x_i), P_{LGBM}(y|x_i), P_{RF}(y|x_i)]$. Một bộ phân loại Hồi quy Logistic (Logistic Regression) tối ưu hóa trọng số tổng hợp qua hàm sigmoid: $\hat{Y} = \sigma(W \cdot Z_i + b)$. Stacking giúp khai thác tính bổ trợ giữa các mô hình, nâng cao độ chính xác phát hiện và giảm dương tính giả.
 Stacking giúp khai thác tính bổ trợ giữa các mô hình, nâng cao độ chính xác phát hiện và giảm thiểu dương tính giả.
 
 \subsection{Chưng cất tri thức sang mô hình học viên}
 Mặc dù mô hình Stacking giáo viên ($\mathcal{E}$) rất mạnh, việc vận hành đồng thời 3 mô hình cây lớn tiêu tốn nhiều tài nguyên và độ trễ cao khi triển khai tại biên. Do đó, chúng tôi áp dụng chưng cất tri thức (KD) để nén mô hình giáo viên thành một cây quyết định học viên ($M_{student}$) gọn nhẹ và nông (với tham số \texttt{max\_depth} giới hạn).
 
-Quy trình chưng cất:
-1) Cho mô hình giáo viên dự đoán trên tập dữ liệu $X_{train}$ để thu được nhãn xác suất mềm $\hat{Y}_{teacher}$.
-2) Huấn luyện mô hình học viên $M_{student}$ bắt chước trực tiếp nhãn $\hat{Y}_{teacher}$ thông qua tối ưu hóa hàm mất mát:
-\begin{equation}
-\min_{\theta_{student}} \sum_{i=1}^{N} \mathcal{L}\left( M_{student}(x_i; \theta_{student}), \hat{Y}_{teacher}^{(i)} \right)
-\end{equation}
-Nhờ học trực tiếp ranh giới quyết định đã được làm mịn từ giáo viên, cây quyết định học viên đạt độ chính xác gần tương đương mô hình giáo viên phức tạp, nhưng giảm thiểu tối đa kích thước lưu trữ và thời gian suy luận thực tế.
+Quy trình chưng cất: Mô hình giáo viên dự đoán trên tập dữ liệu $X_{train}$ để tạo nhãn xác suất mềm $\hat{Y}_{teacher}$. Cây quyết định học viên $M_{student}$ được huấn luyện để bắt chước trực tiếp nhãn $\hat{Y}_{teacher}$ thông qua tối ưu hóa hàm mất mát (độ đo rủi ro thực nghiệm). Nhờ học trực tiếp ranh giới quyết định đã làm mịn, học viên đạt độ chính xác tiệm cận giáo viên phức tạp nhưng giảm thiểu tối đa tài nguyên lưu trữ và thời gian suy luận thực tế.
 
 \begin{algorithm}[ht]
 \DontPrintSemicolon

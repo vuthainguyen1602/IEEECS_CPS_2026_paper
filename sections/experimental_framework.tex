@@ -7,21 +7,7 @@ Hệ thống được phát triển trên Python 3.12, chạy trên máy Apple S
 \subsection{Các chỉ số đánh giá}
 Chúng tôi đánh giá hiệu năng mô hình qua các chỉ số:
 \begin{itemize}
-    \item \textbf{Độ chính xác (Accuracy - Acc)}: Tỷ lệ tổng thể các dự đoán đúng trên tổng số quan sát:
-    \begin{equation}
-        \text{Acc} = \frac{TP + TN}{TP + TN + FP + FN}
-    \end{equation}
-    \item \textbf{Độ chuẩn xác (Precision - Prec)} và \textbf{Độ thu hồi (Recall - Rec)}:
-    \begin{equation}
-        \text{Prec} = \frac{TP}{TP + FP}, \quad \text{Rec} = \frac{TP}{TP + FN}
-    \end{equation}
-    \item \textbf{Điểm F1} và \textbf{Tỷ lệ dương tính giả (FPR)}:
-    \begin{equation}
-        \text{F1} = 2 \cdot \frac{\text{Prec} \cdot \text{Rec}}{\text{Prec} + \text{Rec}}
-    \end{equation}
-    \begin{equation}
-        \text{FPR} = \frac{FP}{FP + TN}
-    \end{equation}
+    \item \textbf{Accuracy, Precision, Recall, F1-score và FPR}: Các chỉ số phân loại phổ biến được tính toán dựa trên ma trận nhầm lẫn (Confusion Matrix). Mức độ quan trọng đặc biệt được đặt vào tỷ lệ dương tính giả (FPR) vì cảnh báo giả ảnh hưởng nghiêm trọng đến hệ thống NIDS trong thực tế.
     \item \textbf{AUC-ROC và AUC-PR}: Đo lường diện tích dưới đường cong ROC và đường cong Precision-Recall để đánh giá độ chính xác trên dữ liệu mất cân bằng.
     \item \textbf{Độ trễ suy luận (Inference Latency)}: Thời gian phân loại tính bằng mili giây trên mỗi 1.000 mẫu suy luận (ms/1k).
 \end{itemize}

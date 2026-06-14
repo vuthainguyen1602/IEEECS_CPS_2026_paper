@@ -24,7 +24,7 @@ TRAIN_PATH = os.path.join(DATA_DIR, "train_data.parquet")
 TEST_PATH = os.path.join(DATA_DIR, "test_data.parquet")
 
 RESULTS_DIR = os.path.join(PROJECT_ROOT, "results")
-FIGURES_DIR = os.path.join(PROJECT_ROOT, "figures")
+FIGURES_DIR = os.path.join(os.path.dirname(PROJECT_ROOT), "figures")
 MODELS_DIR = os.path.join(RESULTS_DIR, "models")
 CACHE_DIR = os.path.join(RESULTS_DIR, "cache")
 
