@@ -18,7 +18,6 @@ IEEECS_CPS_2026/
 ├── references.bib
 │
 └── paper_1/                       # Full experimental implementation
-    ├── main.tex                   # IEEE journal-style manuscript
     ├── code/                      # Python training & evaluation scripts
     │   ├── data_preparation.py
     │   ├── data_utils.py
@@ -108,13 +107,6 @@ xelatex VNICT2026_Template_LaTeX.tex
 ```
 
 > Requires XeLaTeX with Vietnamese language support (`fontspec`, `polyglossia`).
-
-**IEEE journal paper** (`paper_1/`):
-
-```bash
-cd paper_1
-pdflatex main.tex && bibtex main && pdflatex main.tex && pdflatex main.tex
-```
 
 ## Requirements
 
