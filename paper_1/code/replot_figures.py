@@ -3,8 +3,7 @@ import json
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-RESULTS_DIR = "/Users/thainguyenvu/Desktop/paper_1/results"
-FIGURES_DIR = "/Users/thainguyenvu/Desktop/paper_1/figures"
+from config import RESULTS_DIR, FIGURES_DIR
 
 def replot_confusion_matrices():
     results_path = os.path.join(RESULTS_DIR, "all_results.json")

@@ -474,7 +474,7 @@ def plot_confusion_matrices(all_results):
         axes[j].set_visible(False)
         
     plt.tight_layout()
-    plt.savefig(os.path.join(FIGURES_DIR, "confusion_matrices.png"), dpi=300)
+    plt.savefig(os.path.join(OUTPUT_DIR, "confusion_matrices.png"), dpi=300)
     plt.close()
     log_message("Saved Confusion Matrices")
 
@@ -797,7 +797,7 @@ def main():
     os.makedirs(RESULTS_DIR, exist_ok=True)
 
     if not os.path.exists(train_path) or not os.path.exists(test_path):
-        log_message(f"Parquet files not found in {data_dir}. Run data_preparation.py first.")
+        log_message(f"Parquet files not found in {os.path.dirname(train_path)}. Run data_preparation.py first.")
         return
 
     total_start = time.time()

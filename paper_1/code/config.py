@@ -13,9 +13,7 @@ import os
 import random
 import numpy as np
 
-# ============================================================
 # Paths
-# ============================================================
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 DATA_DIR = os.path.join(PROJECT_ROOT, "data")
@@ -30,9 +28,7 @@ CACHE_DIR = os.path.join(RESULTS_DIR, "cache")
 
 LATEX_DIR = os.path.join(PROJECT_ROOT, "sections")
 
-# ============================================================
 # Reproducibility
-# ============================================================
 RANDOM_SEED = 42
 
 def set_global_seed(seed: int = RANDOM_SEED) -> None:
@@ -41,22 +37,16 @@ def set_global_seed(seed: int = RANDOM_SEED) -> None:
     np.random.seed(seed)
     os.environ["PYTHONHASHSEED"] = str(seed)
 
-# ============================================================
 # Experimental Flags
-# ============================================================
 DEBUG_MODE = False            # If True, sample 10% of data for fast verification
 SAMPLE_FRACTION = 1.0         # Fraction of training data to use (1.0 = full)
 
-# ============================================================
 # Cross-Validation Settings
-# ============================================================
 KFOLD_K = 5                   # Number of folds for Stratified K-Fold CV
 CV_SAMPLE_FRACTION = 0.2      # Fraction of fold training data to use
 CV_USE_FAST_SAMPLER = True    # If True, use RandomUnderSampler instead of SMOTEENN
 
-# ============================================================
 # Model Hyperparameters
-# ============================================================
 
 # XGBoost
 XGB_PARAMS = dict(
@@ -84,9 +74,7 @@ STACKING_CV = 10               # Internal CV folds for StackingClassifier
 STUDENT_MAX_DEPTH = 12
 STUDENT_MIN_SAMPLES_SPLIT = 10
 
-# ============================================================
 # Visualization
-# ============================================================
 PLOT_DPI = 300
 PLOT_STYLE = {
     'font.size': 12,

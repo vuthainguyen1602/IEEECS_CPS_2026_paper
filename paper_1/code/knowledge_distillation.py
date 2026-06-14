@@ -75,9 +75,7 @@ def main():
     student_model_path = os.path.join(MODELS_DIR, "student_model.joblib")
     joblib.dump(student_model, student_model_path)
 
-    # ------------------------------------------------------------------
     # Evaluation
-    # ------------------------------------------------------------------
     print("Evaluating Teacher vs Student...")
 
     teacher_size_mb = os.path.getsize(teacher_path) / (1024 * 1024)
@@ -106,9 +104,7 @@ def main():
     compression = teacher_size_mb / student_size_mb
     f1_retention = student_f1 / teacher_f1 * 100
 
-    # ------------------------------------------------------------------
     # Report
-    # ------------------------------------------------------------------
     print("-" * 50)
     print("KNOWLEDGE DISTILLATION RESULTS")
     print("-" * 50)
@@ -124,9 +120,7 @@ def main():
     print(f"F1 Retained: {f1_retention:.2f}% of Teacher's F1")
     print("-" * 50)
 
-    # ------------------------------------------------------------------
     # Save JSON
-    # ------------------------------------------------------------------
     kd_results = {
         "teacher": {
             "Accuracy": float(teacher_acc),
@@ -148,9 +142,7 @@ def main():
     with open(os.path.join(RESULTS_DIR, "kd_results.json"), "w") as f:
         json.dump(kd_results, f, indent=4)
 
-    # ------------------------------------------------------------------
     # Plot: Accuracy vs Inference Speed Trade-off
-    # ------------------------------------------------------------------
     os.makedirs(FIGURES_DIR, exist_ok=True)
     plt.figure(figsize=(10, 7))
 
