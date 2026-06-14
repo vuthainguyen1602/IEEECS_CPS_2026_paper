@@ -842,10 +842,11 @@ def main():
 
     plot_feature_importance(trained_models, feature_names)
 
-    ablation_results = run_ablation_study(
-        X_train_scaled, y_train, X_train_bal, y_train_bal,
-        X_test_scaled, y_test, num_features
-    )
+    # ablation_results = run_ablation_study(
+    #     X_train_scaled, y_train, X_train_bal, y_train_bal,
+    #     X_test_scaled, y_test, num_features
+    # )
+    ablation_results = {}
     ablation_results['Proposed (Stacking + SMOTEENN)'] = ensemble_metrics
 
 

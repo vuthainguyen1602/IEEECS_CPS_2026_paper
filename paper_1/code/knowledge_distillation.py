@@ -81,23 +81,33 @@ def main():
     teacher_size_mb = os.path.getsize(teacher_path) / (1024 * 1024)
     student_size_mb = os.path.getsize(student_model_path) / (1024 * 1024)
 
-    # Teacher
-    t0 = time.perf_counter()
+    # Measure Accuracy and F1 using bulk prediction
     y_pred_teacher = teacher_model.predict(X_test_scaled)
-    teacher_time = time.perf_counter() - t0
-    teacher_ms_per_1k = (teacher_time / len(X_test_scaled)) * 1e6
-
     teacher_acc = accuracy_score(y_test, y_pred_teacher)
     teacher_f1 = f1_score(y_test, y_pred_teacher)
 
-    # Student
-    t0 = time.perf_counter()
     y_pred_student = student_model.predict(X_test_scaled)
-    student_time = time.perf_counter() - t0
-    student_ms_per_1k = (student_time / len(X_test_scaled)) * 1e6
-
     student_acc = accuracy_score(y_test, y_pred_student)
     student_f1 = f1_score(y_test, y_pred_student)
+
+    # Measure Real-time Inference Speed (batch_size = 1)
+    print("Measuring real-time inference latency (batch_size=1)...")
+    np.random.seed(RANDOM_SEED)
+    n_samples_test = min(1000, len(X_test_scaled))
+    sample_indices = np.random.choice(len(X_test_scaled), size=n_samples_test, replace=False)
+    X_samples = X_test_scaled[sample_indices]
+
+    t0_teacher = time.perf_counter()
+    for i in range(n_samples_test):
+        _ = teacher_model.predict(X_samples[i].reshape(1, -1))
+    teacher_time = time.perf_counter() - t0_teacher
+    teacher_ms_per_1k = (teacher_time / n_samples_test) * 1000 * 1000  # Total ms per 1000 samples
+
+    t0_student = time.perf_counter()
+    for i in range(n_samples_test):
+        _ = student_model.predict(X_samples[i].reshape(1, -1))
+    student_time = time.perf_counter() - t0_student
+    student_ms_per_1k = (student_time / n_samples_test) * 1000 * 1000  # Total ms per 1000 samples
 
     # Derived metrics
     speedup = teacher_ms_per_1k / student_ms_per_1k

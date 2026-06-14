@@ -2,15 +2,15 @@
     "teacher": {
         "Accuracy": 0.962735595259604,
         "F1-Score": 0.8768947219981241,
-        "Inference_ms_per_1k": 2.231523486531937,
+        "Inference_ms_per_1k": 21472.769374988275,
         "Size_MB": 36.24307060241699
     },
     "student": {
-        "Accuracy": 0.9607045075058918,
-        "F1-Score": 0.8692872615839805,
-        "Inference_ms_per_1k": 0.1569984017675295,
-        "Size_MB": 0.024712562561035156
+        "Accuracy": 0.9588262973250395,
+        "F1-Score": 0.86190317640008,
+        "Inference_ms_per_1k": 68.94658299279399,
+        "Size_MB": 0.011116981506347656
     },
-    "speedup_factor": 14.213670084592302,
-    "compression_factor": 1466.5848801759735
+    "speedup_factor": 311.44066091328295,
+    "compression_factor": 3260.15389894484
 }

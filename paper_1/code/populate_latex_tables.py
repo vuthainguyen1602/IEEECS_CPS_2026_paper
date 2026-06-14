@@ -60,21 +60,21 @@ def populate_latex():
     # Ablation Study
     ablation = data['ablation_study']
     # Stacking (No SMOTEENN)
-    a1 = ablation['Stacking (No SMOTEENN)']
+    a1 = ablation.get('Stacking (No SMOTEENN)', {'Accuracy': '--', 'F1-Score': '--', 'FPR': '--', 'AUC-ROC': '--'})
     latex_content = re.sub(
         r"Stacking \(No SM\)\s+&\s+[0-9\.,-]+\s+&\s+[0-9\.,-]+\s+&\s+[0-9\.,-]+\s+&\s+[0-9\.,-]+",
         f"Stacking (No SM)              & {format_num(a1['Accuracy'])} & {format_num(a1['F1-Score'])} & {format_num(a1['FPR'], 6)} & {format_num(a1['AUC-ROC'])}",
         latex_content
     )
     # Soft Voting (with SMOTEENN)
-    a2 = ablation['Soft Voting (SMOTEENN)']
+    a2 = ablation.get('Soft Voting (SMOTEENN)', {'Accuracy': '--', 'F1-Score': '--', 'FPR': '--', 'AUC-ROC': '--'})
     latex_content = re.sub(
         r"Soft Voting \(w/ SM\)\s+&\s+[0-9\.,-]+\s+&\s+[0-9\.,-]+\s+&\s+[0-9\.,-]+\s+&\s+[0-9\.,-]+",
         f"Soft Voting (w/ SM)           & {format_num(a2['Accuracy'])} & {format_num(a2['F1-Score'])} & {format_num(a2['FPR'], 6)} & {format_num(a2['AUC-ROC'])}",
         latex_content
     )
     # Stacking (XGB+LGBM, no RF)
-    a3 = ablation['Stacking (XGB+LGBM only)']
+    a3 = ablation.get('Stacking (XGB+LGBM only)', {'Accuracy': '--', 'F1-Score': '--', 'FPR': '--', 'AUC-ROC': '--'})
     latex_content = re.sub(
         r"Stacking \(w/o RF\)\s+&\s+[0-9\.,-]+\s+&\s+[0-9\.,-]+\s+&\s+[0-9\.,-]+\s+&\s+[0-9\.,-]+",
         f"Stacking (w/o RF)             & {format_num(a3['Accuracy'])} & {format_num(a3['F1-Score'])} & {format_num(a3['FPR'], 6)} & {format_num(a3['AUC-ROC'])}",

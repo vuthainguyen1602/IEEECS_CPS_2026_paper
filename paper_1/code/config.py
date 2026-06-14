@@ -71,7 +71,7 @@ RF_PARAMS = dict(
 STACKING_CV = 10               # Internal CV folds for StackingClassifier
 
 # Knowledge Distillation — Student Model
-STUDENT_MAX_DEPTH = 12
+STUDENT_MAX_DEPTH = 8
 STUDENT_MIN_SAMPLES_SPLIT = 10
 
 # Visualization
