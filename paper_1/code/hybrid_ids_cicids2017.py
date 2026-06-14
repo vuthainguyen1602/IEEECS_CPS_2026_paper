@@ -164,14 +164,23 @@ def balance_training_data(X_train, y_train, sample_frac=1.0):
         log_message(f"Resampled Training Class Distribution (CACHED):\n{pd.Series(y_resampled).value_counts()}")
         return X_resampled, y_resampled
 
-    log_message(f"Original Training Class Distribution:\n{y_train.value_counts()}")
-    log_message("Applying SMOTEENN (Parallel Mode: n_jobs=-1)...")
-    log_message("Note: This is a heavy step. Result will be cached for future runs.")
+    log_message("Original Training Class Distribution:")
+    log_message(f"\n{y_train.value_counts()}")
+    
+    log_message("Step 1/2: Pre-downsampling majority class using RandomUnderSampler...")
+    # Downsample majority class to be equal to minority class to drastically speed up SMOTEENN
+    rus = RandomUnderSampler(sampling_strategy='auto', random_state=RANDOM_SEED)
+    X_rus, y_rus = rus.fit_resample(X_train, y_train)
+    
+    log_message(f"Distribution after RandomUnderSampler:\n{pd.Series(y_rus).value_counts()}")
+    
+    log_message("Step 2/2: Applying SMOTEENN (Parallel Mode: n_jobs=-1)...")
+    log_message("Note: This will now run much faster due to the reduced dataset size.")
 
     start_time = time.time()
     enn = EditedNearestNeighbours(n_jobs=-1)
     smote_enn = SMOTEENN(enn=enn, random_state=RANDOM_SEED)
-    X_resampled, y_resampled = smote_enn.fit_resample(X_train, y_train)
+    X_resampled, y_resampled = smote_enn.fit_resample(X_rus, y_rus)
 
     elapsed = time.time() - start_time
     log_message(f"SMOTEENN Completed in {elapsed:.2f} seconds.")
