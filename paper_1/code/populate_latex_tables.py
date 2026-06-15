@@ -59,15 +59,15 @@ def populate_latex():
     
     # Ablation Study
     ablation = data['ablation_study']
-    # Stacking (No SMOTEENN)
-    a1 = ablation.get('Stacking (No SMOTEENN)', {'Accuracy': '--', 'F1-Score': '--', 'FPR': '--', 'AUC-ROC': '--'})
+    # Stacking (No ENN)
+    a1 = ablation.get('Stacking (No ENN)', {'Accuracy': '--', 'F1-Score': '--', 'FPR': '--', 'AUC-ROC': '--'})
     latex_content = re.sub(
         r"Stacking \(No SM\)\s+&\s+[0-9\.,-]+\s+&\s+[0-9\.,-]+\s+&\s+[0-9\.,-]+\s+&\s+[0-9\.,-]+",
         f"Stacking (No SM)              & {format_num(a1['Accuracy'])} & {format_num(a1['F1-Score'])} & {format_num(a1['FPR'], 6)} & {format_num(a1['AUC-ROC'])}",
         latex_content
     )
-    # Soft Voting (with SMOTEENN)
-    a2 = ablation.get('Soft Voting (SMOTEENN)', {'Accuracy': '--', 'F1-Score': '--', 'FPR': '--', 'AUC-ROC': '--'})
+    # Soft Voting (with ENN)
+    a2 = ablation.get('Soft Voting (ENN)', {'Accuracy': '--', 'F1-Score': '--', 'FPR': '--', 'AUC-ROC': '--'})
     latex_content = re.sub(
         r"Soft Voting \(w/ SM\)\s+&\s+[0-9\.,-]+\s+&\s+[0-9\.,-]+\s+&\s+[0-9\.,-]+\s+&\s+[0-9\.,-]+",
         f"Soft Voting (w/ SM)           & {format_num(a2['Accuracy'])} & {format_num(a2['F1-Score'])} & {format_num(a2['FPR'], 6)} & {format_num(a2['AUC-ROC'])}",
@@ -81,7 +81,7 @@ def populate_latex():
         latex_content
     )
     # Hybrid (Full)
-    a4 = ablation.get('Proposed (Stacking + SMOTEENN)', ens)
+    a4 = ablation.get('Proposed (Stacking + ENN)', ens)
     pattern = r"\\textbf\{Hybrid \(Full\)\}\s+&\s+\\textbf\{[0-9\.,-]+\}\s+&\s+\\textbf\{[0-9\.,-]+\}\s+&\s+\\textbf\{[0-9\.,-]+\}\s+&\s+\\textbf\{[0-9\.,-]+\}"
     replacement = f"\\\\textbf{{Hybrid (Full)}}        & \\\\textbf{{{format_num(a4['Accuracy'])}}} & \\\\textbf{{{format_num(a4['F1-Score'])}}} & \\\\textbf{{{format_num(a4['FPR'], 6)}}} & \\\\textbf{{{format_num(a4['AUC-ROC'])}}}"
     latex_content = re.sub(pattern, replacement, latex_content)

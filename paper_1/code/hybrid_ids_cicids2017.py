@@ -38,7 +38,6 @@ from sklearn.metrics import (
 from sklearn.model_selection import StratifiedKFold
 from xgboost import XGBClassifier
 from lightgbm import LGBMClassifier
-from imblearn.combine import SMOTEENN
 from imblearn.under_sampling import EditedNearestNeighbours, RandomUnderSampler
 
 from config import (
@@ -174,16 +173,15 @@ def balance_training_data(X_train, y_train, sample_frac=1.0):
     
     log_message(f"Distribution after RandomUnderSampler:\n{pd.Series(y_rus).value_counts()}")
     
-    log_message("Step 2/2: Applying SMOTEENN (Parallel Mode: n_jobs=-1)...")
+    log_message("Step 2/2: Applying ENN to clean decision boundaries (Parallel Mode: n_jobs=-1)...")
     log_message("Note: This will now run much faster due to the reduced dataset size.")
 
     start_time = time.time()
     enn = EditedNearestNeighbours(n_jobs=-1)
-    smote_enn = SMOTEENN(enn=enn, random_state=RANDOM_SEED)
-    X_resampled, y_resampled = smote_enn.fit_resample(X_rus, y_rus)
+    X_resampled, y_resampled = enn.fit_resample(X_rus, y_rus)
 
     elapsed = time.time() - start_time
-    log_message(f"SMOTEENN Completed in {elapsed:.2f} seconds.")
+    log_message(f"ENN Completed in {elapsed:.2f} seconds.")
     log_message(f"Resampled Training Class Distribution:\n{pd.Series(y_resampled).value_counts()}")
 
     log_message(f"Saving resampled data to cache: {cache_file}")
@@ -591,33 +589,36 @@ def run_ablation_study(X_train_raw, y_train_raw, X_train_bal, y_train_bal, X_tes
     """
     Ablation Study: Measure the contribution of each component.
     Experiments:
-    1. Ensemble WITHOUT SMOTEENN (raw imbalanced data)
-    2. Soft Voting instead of Stacking
-    3. Stacking with only XGB + LGBM (no RF)
-    4. Full Proposed (Stacking + SMOTEENN + all 3 models) — from main pipeline
+    1. Ensemble WITHOUT ENN (raw imbalanced data)
+    2. Soft Voting Baseline (WITH ENN)
+    3. Stacking Baseline (XGBoost + LightGBM only, WITH ENN)
+    4. Full Proposed (Stacking + ENN + all 3 models) — from main pipeline
     """
     log_message("ABLATION STUDY: Measuring component contributions...")
 
     ablation_results = {}
 
-    # --- Experiment 1: Ensemble WITHOUT SMOTEENN ---
-    log_message("[Ablation 1/4] Training Stacking WITHOUT SMOTEENN...")
-    base_1 = build_base_models(num_features)
-    ens_1 = build_ensemble(base_1)
-    start = time.time()
-    ens_1.fit(X_train_raw, y_train_raw)
-    t1 = time.time() - start
-    y_pred = ens_1.predict(X_test)
-    try:
-        y_prob = ens_1.predict_proba(X_test)[:, 1]
-    except:
-        y_prob = None
-    ablation_results['Stacking (No SMOTEENN)'] = compute_metrics(y_test, y_pred, y_prob)
-    ablation_results['Stacking (No SMOTEENN)']['Train Time (s)'] = round(t1, 2)
-    del ens_1; gc.collect()
+    # --- Experiment 1: Ensemble WITHOUT ENN ---
+    log_message("[Ablation 1/4] Training Stacking WITHOUT ENN...")
+    
+    t1_start = time.time()
+    abl1_ensemble = StackingClassifier(
+        estimators=[('xgb', base_models['xgb']), ('lgbm', base_models['lgbm']), ('rf', base_models['rf'])],
+        final_estimator=LogisticRegression(max_iter=1000),
+        cv=2,
+        n_jobs=-1
+    )
+    abl1_ensemble.fit(X_train_raw, y_train_raw)
+    t1 = time.time() - t1_start
+    
+    y_pred = abl1_ensemble.predict(X_test)
+    y_prob = abl1_ensemble.predict_proba(X_test)[:, 1]
+    ablation_results['Stacking (No ENN)'] = compute_metrics(y_test, y_pred, y_prob)
+    ablation_results['Stacking (No ENN)']['Train Time (s)'] = round(t1, 2)
+    del abl1_ensemble; gc.collect()
 
     # --- Experiment 2: Soft Voting instead of Stacking ---
-    log_message("[Ablation 2/4] Training Soft Voting WITH SMOTEENN...")
+    log_message("[Ablation 2/4] Training Soft Voting WITH ENN...")
     base_2 = build_base_models(num_features)
     voting = VotingClassifier(estimators=base_2, voting='soft', n_jobs=-1)
     start = time.time()
@@ -628,8 +629,8 @@ def run_ablation_study(X_train_raw, y_train_raw, X_train_bal, y_train_bal, X_tes
         y_prob = voting.predict_proba(X_test)[:, 1]
     except:
         y_prob = None
-    ablation_results['Soft Voting (SMOTEENN)'] = compute_metrics(y_test, y_pred, y_prob)
-    ablation_results['Soft Voting (SMOTEENN)']['Train Time (s)'] = round(t2, 2)
+    ablation_results['Soft Voting (ENN)'] = compute_metrics(y_test, y_pred, y_prob)
+    ablation_results['Soft Voting (ENN)']['Train Time (s)'] = round(t2, 2)
     del voting; gc.collect()
 
     # --- Experiment 3: Stacking with only XGB + LGBM (no RF) ---
@@ -847,7 +848,7 @@ def main():
     #     X_test_scaled, y_test, num_features
     # )
     ablation_results = {}
-    ablation_results['Proposed (Stacking + SMOTEENN)'] = ensemble_metrics
+    ablation_results['Proposed (Stacking + ENN)'] = ensemble_metrics
 
 
     cv_summary, fold_metrics = run_kfold_cv(X_train_scaled, y_train, num_features, k=KFOLD_K)

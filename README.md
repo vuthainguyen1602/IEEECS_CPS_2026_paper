@@ -1,10 +1,10 @@
 # IEEECS CPS 2026 — Hybrid Ensemble IDS for Edge Computing
 
-Research repository for a two-stage Network Intrusion Detection System (IDS) designed for edge and IoT deployments. The approach combines a high-accuracy teacher ensemble (XGBoost, LightGBM, Random Forest with SMOTEENN) with knowledge distillation into a lightweight decision-tree student model, evaluated on the [CICIDS2017](https://www.unb.ca/cic/datasets/ids-2017.html) dataset.
+Research repository for a two-stage Network Intrusion Detection System (IDS) designed for edge and IoT deployments. The approach combines a high-accuracy teacher ensemble (XGBoost, LightGBM, Random Forest with RUS and ENN) with knowledge distillation into a lightweight decision-tree student model, evaluated on the [CICIDS2017](https://www.unb.ca/cic/datasets/ids-2017.html) dataset.
 
 ## Highlights
 
-- **Teacher model**: Stacking ensemble with SMOTEENN for handling extreme class imbalance
+- **Teacher model**: Stacking ensemble with RUS and ENN for handling extreme class imbalance
 - **Student model**: Knowledge distillation into a compact decision tree for low-latency edge inference
 - **Results**: Teacher accuracy >99.8%; distilled student retains >99% accuracy with significantly lower inference cost
 - **Reproducible pipeline**: End-to-end scripts from data preparation through LaTeX table population
@@ -100,10 +100,11 @@ RAW_DATA_DIR = "/content/drive/MyDrive/ids-2017"  # update as needed
 **VNICT 2026 conference paper** (root):
 
 ```bash
-xelatex VNICT2026_Template_LaTeX.tex
+# Thêm cờ -interaction=nonstopmode để tránh bị dừng khi có cảnh báo nhỏ
+xelatex -interaction=nonstopmode VNICT2026_Template_LaTeX.tex
 bibtex VNICT2026_Template_LaTeX
-xelatex VNICT2026_Template_LaTeX.tex
-xelatex VNICT2026_Template_LaTeX.tex
+xelatex -interaction=nonstopmode VNICT2026_Template_LaTeX.tex
+xelatex -interaction=nonstopmode VNICT2026_Template_LaTeX.tex
 ```
 
 > Requires XeLaTeX with Vietnamese language support (`fontspec`, `polyglossia`).

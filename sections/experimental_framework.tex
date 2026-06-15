@@ -1,8 +1,8 @@
 \section{Thiết lập thực nghiệm}
-Để đánh giá giải pháp đề xuất, thực nghiệm được thực hiện trên bộ dữ liệu chuẩn CICIDS2017. Tập dữ liệu được phân chia ngẫu nhiên (cố định seed) thành 3 tập độc lập: 70\% huấn luyện, 10\% kiểm chứng và 20\% kiểm tra.
+Để đánh giá giải pháp đề xuất, thực nghiệm được thực hiện trên bộ dữ liệu chuẩn CICIDS2017. Tập dữ liệu được phân chia ngẫu nhiên (với seed cố định) thành \textbf{80\% cho quá trình huấn luyện} và \textbf{20\% cho tập kiểm tra độc lập (hold-out test set)}. Trong quá trình huấn luyện, cơ chế \textbf{Kiểm chứng chéo 5 vòng phân tầng (Stratified 5-Fold Cross-Validation)} được áp dụng trên tập huấn luyện để tối ưu hóa mô hình.
 
 \subsection{Môi trường thực nghiệm}
-Hệ thống được phát triển trên Python 3.12, chạy trên máy Apple Silicon M3 (16GB RAM) với hệ điều hành macOS 15.5. Các thư viện được sử dụng gồm: \texttt{scikit-learn} (tiền xử lý, Random Forest, Logistic Regression), \texttt{xgboost}, \texttt{lightgbm} và \texttt{imbalanced-learn} (SMOTEENN).
+Hệ thống được phát triển trên Python 3.12, triển khai trên nền tảng đám mây Google Colaboratory với vi xử lý Intel Xeon (2.20GHz) và 12.6GB RAM. Các thư viện được sử dụng gồm: \texttt{scikit-learn} (tiền xử lý, Random Forest, Logistic Regression), \texttt{xgboost}, \texttt{lightgbm} và \texttt{imbalanced-learn} (RUS và ENN).
 
 \subsection{Các chỉ số đánh giá}
 Chúng tôi đánh giá hiệu năng mô hình qua các chỉ số:
@@ -15,6 +15,6 @@ Chúng tôi đánh giá hiệu năng mô hình qua các chỉ số:
 \subsection{Phương pháp thực nghiệm}
 \begin{enumerate}
     \item \textit{So sánh baseline}: So sánh mô hình Stacking đề xuất với từng mô hình đơn lẻ (XGBoost, LightGBM, Random Forest) trên tập kiểm tra.
-    \item \textit{Nghiên cứu cắt bỏ (Ablation Study)}: Lần lượt loại bỏ/thay thế từng phần của mô hình (SMOTEENN, mô hình Stacking, Random Forest) để định lượng đóng góp của chúng.
-    \item \textit{Kiểm định độ ổn định}: Áp dụng 5-fold stratified cross-validation trên tập huấn luyện 70\% để kiểm chứng tính bền vững của mô hình.
+    \item \textit{Thử nghiệm bóc tách (Ablation Study)}: Lần lượt loại bỏ/thay thế từng phần của mô hình (ENN, mô hình Stacking, Random Forest) để định lượng đóng góp của chúng.
+    \item \textit{Kiểm định độ ổn định}: Áp dụng 5-fold stratified cross-validation trên tập huấn luyện 80\% để kiểm chứng tính bền vững của mô hình.
 \end{enumerate}

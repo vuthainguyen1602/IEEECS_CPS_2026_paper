@@ -58,7 +58,7 @@
     "Train Time (s)": 2817.01
   },
   "ablation_study": {
-    "Stacking (No SMOTEENN)": {
+    "Stacking (No ENN)": {
       "Accuracy": 0.9989686683425806,
       "Precision": 0.9967877324204554,
       "Recall": 0.9983326679660898,
@@ -72,7 +72,7 @@
       "AUC-PR": 0.9998572212472078,
       "Train Time (s)": 1326.3
     },
-    "Soft Voting (SMOTEENN)": {
+    "Soft Voting (ENN)": {
       "Accuracy": 0.9986835646392075,
       "Precision": 0.994889426843958,
       "Recall": 0.998896273160651,
@@ -100,7 +100,7 @@
       "AUC-PR": 0.9997896512750566,
       "Train Time (s)": 79.01
     },
-    "Proposed (Stacking + SMOTEENN)": {
+    "Proposed (Stacking + ENN)": {
       "Accuracy": 0.9987207520787779,
       "Precision": 0.9955624765829899,
       "Recall": 0.9983913768405233,
