@@ -1,75 +1,58 @@
-\section{Phương pháp đề xuất}
-Phương pháp đề xuất gồm hai giai đoạn chính: (1) Tiền xử lý dữ liệu và huấn luyện mô hình Stacking Giáo viên trên dữ liệu đã được thu gọn bằng RUS và làm sạch bằng ENN; (2) Chưng cất tri thức (KD) từ mô hình Giáo viên sang cây quyết định Học viên gọn nhẹ.
+\section{Kiến trúc và Phương pháp đề xuất}
+Nghiên cứu đề xuất kiến trúc hai giai đoạn: (1) Tiền xử lý dữ liệu với lấy mẫu lai RUS-ENN và huấn luyện mô hình Giáo viên (Stacking Teacher); (2) Áp dụng chưng cất tri thức (Knowledge Distillation) để chuyển giao tri thức từ Teacher sang mô hình Học viên (Student) Cây quyết định.
 
-\subsection{Tiền xử lý và xử lý mất cân bằng lớp}
-Bộ dữ liệu CICIDS2017 gồm hơn 78 đặc trưng lưu lượng mạng với mức độ biến thiên lớn và một số giá trị thiếu (\texttt{NaN}), vô hạn (\texttt{Inf}). 
-\subsubsection{Làm sạch dữ liệu và Chuẩn hóa đặc trưng} Các bản ghi chứa giá trị không hợp lệ (\texttt{NaN}, \texttt{Inf}) hoặc trùng lặp bị loại bỏ. Chúng tôi sử dụng phương pháp Robust Scaling để chuẩn hóa dữ liệu, giúp hạn chế ảnh hưởng của các giá trị ngoại lệ (outliers) phổ biến trong lưu lượng mạng:
+\subsection{Xử lý nhiễu và phân phối dữ liệu}
+\subsubsection{Làm sạch và chuẩn hóa đặc trưng} 
+Dữ liệu CICIDS2017 được làm sạch (loại bỏ \texttt{NaN}, \texttt{Inf}, trùng lặp) và chuẩn hóa bằng Robust Scaling để giảm thiểu ảnh hưởng của ngoại lai:
 \begin{equation}
 x_{norm} = \frac{x_i - \tilde{x}}{\text{IQR}(X)}
 \end{equation}
-trong đó $\tilde{x}$ là trung vị và $\text{IQR}(X)$ là khoảng tứ phân vị của đặc trưng $X$.
+trong đó $\tilde{x}$ là trung vị và $\text{IQR}(X)$ là khoảng tứ phân vị.
 
-\subsubsection{Chiến lược lấy mẫu lai (RUS + ENN)}
-Để xử lý hiện tượng mất cân bằng dữ liệu cực đoan (các lớp tấn công thiểu số chiếm $<0,01\%$ dữ liệu) và giảm thiểu chi phí tính toán khổng lồ khi dữ liệu quá lớn, chúng tôi đề xuất chiến lược lấy mẫu lai kết hợp. Đầu tiên, kỹ thuật Random Under-sampling (RUS) được áp dụng để thu gọn ngẫu nhiên lớp đa số (hơn 2 triệu mẫu) xuống mức cân bằng tương đối, giúp loại bỏ lượng lớn các mẫu dư thừa ở xa ranh giới quyết định. 
-
-Sau đó, kỹ thuật ENN~\cite{wilson1972asymptotic} được áp dụng trên tập dữ liệu đã thu gọn để loại bỏ các mẫu có nhãn khác biệt với đa số trong 3 láng giềng gần nhất nhằm làm sạch ranh giới phân loại. Sự kết hợp tinh tế giữa RUS và ENN không chỉ giảm triệt để thời gian tính toán, mà còn tạo ra tập dữ liệu cân bằng, không có nhiễu với ranh giới phân lớp duy trì độ phân tách rõ rệt.
+\subsubsection{Chiến lược lấy mẫu lai (RUS kết hợp ENN)}
+Để giải quyết mất cân bằng lớn (lớp thiểu số $<0,01\%$), chúng tôi áp dụng chiến lược lấy mẫu lai. Đầu tiên, kỹ thuật Lấy mẫu giảm ngẫu nhiên (Random Under-Sampling - RUS) được sử dụng để giảm quy mô lớp đa số, loại bỏ bớt các mẫu cách xa ranh giới quyết định. Kế tiếp, bộ lọc ENN~\cite{wilson1972asymptotic} loại bỏ các mẫu bị nhiễu cục bộ dựa trên quy tắc 3 láng giềng gần nhất. Quy trình này (Thuật toán~\ref{algo:preprocessing}) tạo ra tập dữ liệu cân bằng với ranh giới phân lớp sắc nét.
 
 \begin{algorithm}[hbt!]
 \SetAlgoLined
-\KwIn{Bộ dữ liệu lưu lượng mạng thô $\mathcal{D} = \{(x_1, y_1), \dots, (x_N, y_N)\}$}
-\KwOut{Bộ dữ liệu đã được làm sạch, co giãn và cân bằng $\mathcal{D}_{bal}$}
-
-\tcp{Bước 1: Làm sạch dữ liệu và Chuẩn hóa đặc trưng}
-Loại bỏ các bản ghi chứa \texttt{NaN}, \texttt{Inf}\;
-Áp dụng Robust Scaler: $x'_i \leftarrow \frac{x_i - \tilde{x}}{\text{IQR}}$\;
-Chia dữ liệu thành lớp đa số $\mathcal{S}_{maj}$ và thiểu số $\mathcal{S}_{min}$\;
-
-\tcp{Bước 2: Chiến lược lấy mẫu lai}
-\tcp{2.1: Giảm thiểu mẫu bằng RUS}
-Giảm ngẫu nhiên $\mathcal{S}_{maj}$ xuống một tỷ lệ nhất định để tạo $\mathcal{S}'_{maj}$ \tcp*[h]{Loại bỏ bớt mẫu dư thừa}
-
-\tcp{2.2: Làm sạch ranh giới bằng ENN}
-\ForEach{$(x_i, y_i) \in \mathcal{S}'_{maj} \cup \mathcal{S}_{min}$}{
-    Tìm 3-láng giềng gần nhất $N_3(x_i)$\;
-    \If{lớp đa số của $N_3(x_i) \neq y_i$}{
-        Loại bỏ $(x_i, y_i)$ khỏi $\mathcal{D}_{bal}$ \tcp*[h]{Lọc nhiễu}
+\KwIn{Bộ dữ liệu thô $\mathcal{D} = \mathcal{S}_{maj} \cup \mathcal{S}_{min}$}
+\KwOut{Bộ dữ liệu cân bằng $\mathcal{D}_{bal}$}
+Loại bỏ \texttt{NaN}, \texttt{Inf}, trùng lặp và chuẩn hóa Robust Scaler\;
+Giảm lấy mẫu $\mathcal{S}_{maj}$ bằng RUS để tạo $\mathcal{S}'_{maj}$\;
+Khởi tạo $\mathcal{D}_{bal} \leftarrow \mathcal{S}'_{maj} \cup \mathcal{S}_{min}$\;
+\ForEach{$(x_i, y_i) \in \mathcal{S}'_{maj}$}{
+    Tìm 3 láng giềng gần nhất $N_3(x_i)$ trong $\mathcal{D}_{bal}$\;
+    \If{nhãn đa số của $N_3(x_i) \neq y_i$}{
+        $\mathcal{D}_{bal} \leftarrow \mathcal{D}_{bal} \setminus \{(x_i, y_i)\}$\;
     }
 }
-
 \Return{$\mathcal{D}_{bal}$}
-\caption{Tiền xử lý dữ liệu và Cân bằng lai (RUS + ENN)}
+\caption{Tiền xử lý và Lấy mẫu lai (RUS + ENN)}
 \label{algo:preprocessing}
 \end{algorithm}
 
-\subsection{Kiến trúc Stacking kết hợp (Mô hình Giáo viên)}
-Chúng tôi xây dựng một kiến trúc Stacking 2 tầng để tận dụng ưu điểm của boosting và bagging:
-\subsubsection{Các mô hình cơ sở (Tầng 0)} 
-Gồm ba bộ phân loại dựa trên cây hiệu quả cho dữ liệu bảng: \textbf{XGBoost}~\cite{chen2016xgboost} và \textbf{LightGBM}~\cite{ke2017lightgbm} tối ưu hóa hàm mục tiêu kết hợp hàm mất mát lồi và thành phần phạt chính quy hóa để sửa lỗi tuần tự, kết hợp cơ chế GOSS và EFB tăng tốc độ huấn luyện; và \textbf{Random Forest}~\cite{breiman2001random} sử dụng kỹ thuật bagging tổng hợp các cây quyết định song song để giảm phương sai.
+\subsection{Mô hình Teacher kiến trúc Stacking}
+Kiến trúc Stacking gồm hai tầng:
+\subsubsection{Tầng 0 (Nhóm mô hình cơ sở)} Bao gồm \textbf{XGBoost}~\cite{chen2016xgboost}, \textbf{LightGBM}~\cite{ke2017lightgbm} (cơ chế boosting) và \textbf{Random Forest}~\cite{breiman2001random} (cơ chế bagging).
+\subsubsection{Tầng 1 (Mô hình tổng hợp)} Đầu ra xác suất từ Tầng 0 tạo thành ma trận đặc trưng $Z_i = [P_{XGB}, P_{LGBM}, P_{RF}]$. Bộ phân loại Hồi quy Logistic tổng hợp dự đoán qua hàm sigmoid: $\hat{Y} = \sigma(W \cdot Z_i + b)$. Kiến trúc này tăng độ chính xác và giảm cảnh báo giả.
 
-\subsubsection{Mô hình tổng hợp (Tầng 1)} 
-Đầu ra xác suất dự đoán từ Tầng 0 được ghép thành ma trận đặc trưng mới $Z_i = [P_{XGB}(y|x_i), P_{LGBM}(y|x_i), P_{RF}(y|x_i)]$. Một bộ phân loại Hồi quy Logistic (Logistic Regression) tối ưu hóa trọng số tổng hợp qua hàm sigmoid: $\hat{Y} = \sigma(W \cdot Z_i + b)$. Stacking giúp khai thác tính bổ trợ giữa các mô hình, nâng cao độ chính xác phát hiện và giảm thiểu dương tính giả.
+\subsection{Chưng cất tri thức sang mô hình Student}
+Mô hình Stacking Teacher ($\mathcal{E}$) có độ trễ lớn, không phù hợp cho thiết bị biên. Do đó, chúng tôi áp dụng chưng cất tri thức dạng Mô hình thay thế (Surrogate Model) để huấn luyện một mô hình Student (Cây quyết định nông). Cây quyết định được chọn vì tính gọn nhẹ và tốc độ duyệt $O(\log n)$.
 
-\subsection{Chưng cất tri thức sang mô hình Học viên}
-Mặc dù mô hình Stacking Giáo viên ($\mathcal{E}$) rất mạnh, việc vận hành đồng thời 3 mô hình cây lớn tiêu tốn nhiều tài nguyên và độ trễ cao khi triển khai tại biên. Do đó, chúng tôi áp dụng chưng cất tri thức (KD) để nén mô hình Giáo viên thành một cây quyết định Học viên ($M_{student}$) gọn nhẹ và nông (với tham số \texttt{max\_depth} giới hạn).
-
-Quy trình chưng cất: Do giới hạn của cấu trúc cây quyết định truyền thống (học trên nhãn phân lớp thay vì xác suất liên tục), chúng tôi áp dụng phương pháp Mô hình thay thế (Surrogate Model), một biến thể của KD thông qua việc giả lập ranh giới quyết định (hard predictions) của mô hình Giáo viên. Cụ thể, mô hình Giáo viên dự đoán trên tập dữ liệu $X_{train}$ để tạo nhãn mục tiêu $\hat{Y}_{teacher}$. Cây quyết định Học viên $M_{student}$ sau đó được huấn luyện để bắt chước trực tiếp nhãn $\hat{Y}_{teacher}$. Nhờ học trực tiếp ranh giới quyết định đã được tổng hợp bởi Giáo viên, Học viên đạt độ chính xác tiệm cận mô hình gốc nhưng giảm thiểu tối đa tài nguyên lưu trữ và thời gian suy luận thực tế.
+Cụ thể, mô hình Teacher tổng hợp nhãn mục tiêu mới $\hat{Y}_{teacher}$ bằng cách tạo ra các dự đoán nhãn cứng (hard labels) trên tập huấn luyện. Sau đó, mô hình Student $M_{student}$ học trực tiếp trên bộ nhãn này (Thuật toán~\ref{algo:kd}).
 
 \begin{algorithm}[ht]
 \DontPrintSemicolon
 \SetAlgoLined
-\KwIn{Tập đặc trưng cân bằng $X_{train}$, Nhãn gốc $Y_{train}$, Mô hình Giáo viên đã huấn luyện $\mathcal{E}$, Độ sâu tối đa của cây Học viên $d$}
-\KwOut{Mô hình Học viên đã tối ưu hóa $M_{student}$}
-\tcp{Bước 1: Tạo nhãn mục tiêu từ mô hình Giáo viên}
-$\hat{Y}_{teacher} \leftarrow \emptyset$ \;
+\KwIn{Tập huấn luyện $X_{train} = \{x_1, \dots, x_N\}$, Mô hình Giáo viên $\mathcal{E}$}
+\KwOut{Mô hình Học viên $M_{student}$}
+Khởi tạo mảng dự đoán $\hat{Y}_{teacher} \leftarrow$ mảng rỗng kích thước $N$\;
 \For{$i = 1 \dots N$}{
-    $p_i \leftarrow \mathcal{E}.predict\_proba(x_i)$ \tcp*[h]{Lấy phân phối xác suất}
-    $\hat{y}^{(i)}_{teacher} \leftarrow \arg\max(p_i)$ \tcp*[h]{Trích xuất nhãn cứng (hard label)}
-    $\hat{Y}_{teacher} \leftarrow \hat{Y}_{teacher} \cup \{\hat{y}^{(i)}_{teacher}\}$ \;
+    $p_i \leftarrow \mathcal{E}.predict\_proba(x_i)$\;
+    $\hat{Y}_{teacher}[i] \leftarrow \arg\max(p_i)$ \;
 }
-\tcp{Bước 2: Huấn luyện mô hình Học viên}
-Khởi tạo Cây quyết định $M_{student}$ với tham số max\_depth=$d$ \;
+Khởi tạo Cây quyết định $M_{student}$ (max\_depth=$d$)\;
 $M_{student}.fit(X_{train}, \hat{Y}_{teacher})$ \;
 \Return $M_{student}$ \;
-\caption{Chưng cất tri thức Giáo viên--Học viên}
+\caption{Chưng cất tri thức Giáo viên - Học viên}
 \label{algo:kd}
 \end{algorithm}

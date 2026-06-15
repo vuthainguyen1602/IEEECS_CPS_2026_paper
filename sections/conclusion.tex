@@ -1,9 +1,9 @@
-\section{Thảo luận và Kết luận}
-Bài báo đề xuất giải pháp phát hiện xâm nhập mạng (NIDS) hai giai đoạn kết hợp SMOTEENN, Stacking và chưng cất tri thức (KD) tối ưu cho môi trường biên.
+\section{Kết luận}
+Bài báo này đã đề xuất một giải pháp nhằm giải quyết đồng thời ba thách thức lớn của các Hệ thống Phát hiện Xâm nhập Mạng (NIDS) hiện nay: phân phối dữ liệu mất cân bằng lớn, yêu cầu về tốc độ phản hồi thời gian thực và rào cản phần cứng tại các thiết bị biên. Cốt lõi của giải pháp là một kiến trúc hai giai đoạn. Ở giai đoạn đầu, một mô hình Giáo viên (Teacher) dựa trên kiến trúc phân loại tổng hợp (Stacking) đã được thiết lập, kết hợp XGBoost, LightGBM và Random Forest. Nhờ việc được huấn luyện trên không gian đặc trưng đã được xử lý bởi chiến lược lấy mẫu lai RUS-ENN, mô hình Teacher sở hữu khả năng nhận diện chính xác những mẫu tấn công hiếm gặp, đồng thời giảm thiểu tỷ lệ cảnh báo giả. Ở giai đoạn sau, kỹ thuật chưng cất tri thức (Knowledge Distillation) đã được sử dụng nhằm chuyển giao tri thức từ Teacher sang một mô hình Học viên (Student) là một mô hình Cây quyết định nông.
 
-Thực nghiệm trên CICIDS2017 cho thấy mô hình Giáo viên stacking đạt F1 $0,9963$. Mô hình Học viên là cây quyết định nông sau chưng cất vẫn duy trì hiệu năng cao (Acc $99,48\%$, F1 $0,9845$), đồng thời giảm thời gian suy luận \textbf{368 lần} (còn $163,62$ ms/1k mẫu) và nén dung lượng bộ nhớ \textbf{1.758 lần} (còn $0,0128$ MB). Kết quả này khẳng định khả năng nén tri thức vượt trội và tính khả thi của giải pháp tại biên.
+Thực nghiệm trên bộ dữ liệu kiểm chuẩn CICIDS2017 đã cung cấp những kết quả rõ ràng: mô hình Student không chỉ bảo toàn được độ chính xác tiệm cận với cấu trúc gốc (đạt F1 0,9845), mà còn mang lại sự cải thiện lớn về mặt hiệu năng vận hành khi giảm không gian lưu trữ tới 1.758 lần và tăng tốc độ suy luận lên 368 lần. Những kết quả này khẳng định tính khả thi của giải pháp trong các kịch bản triển khai an ninh mạng thời gian thực trên hệ sinh thái IoT.
 
-Trong tương lai, chúng tôi sẽ mở rộng mô hình sang phân loại đa lớp, tích hợp cơ chế học thích ứng liên tục và thử nghiệm trực tiếp trên phần cứng IoT thực tế (Raspberry Pi, Jetson).
+Trong tương lai, định hướng nghiên cứu sẽ tập trung vào việc tích hợp Học máy Liên kết (Federated Learning). Hướng tiếp cận này kỳ vọng sẽ mở ra cơ chế cập nhật mô hình Student liên tục và tự động từ các nút mạng phân tán, đảm bảo khả năng phòng ngự trước các biến thể tấn công mới mà vẫn tuân thủ nghiêm ngặt các tiêu chuẩn về quyền riêng tư dữ liệu mạng.
 
 \appendix
 \section*{Lời cảm ơn}

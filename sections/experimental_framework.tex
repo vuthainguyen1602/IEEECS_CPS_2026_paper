@@ -1,20 +1,13 @@
 \section{Thiết lập thực nghiệm}
-Để đánh giá giải pháp đề xuất, thực nghiệm được thực hiện trên bộ dữ liệu chuẩn CICIDS2017. Tập dữ liệu được phân chia ngẫu nhiên (với seed cố định) thành \textbf{80\% cho quá trình huấn luyện} và \textbf{20\% cho tập kiểm tra độc lập (hold-out test set)}. Trong quá trình huấn luyện, cơ chế \textbf{Kiểm chứng chéo 5 vòng phân tầng (Stratified 5-Fold Cross-Validation)} được áp dụng trên tập huấn luyện để tối ưu hóa mô hình.
+\subsection{Môi trường phần cứng và phần mềm}
+Toàn bộ quá trình thực nghiệm (bao gồm huấn luyện mô hình Giáo viên và đánh giá tốc độ suy luận của mô hình Học viên) đều được triển khai thống nhất trên nền tảng Google Colab Pro (Intel Xeon 2.20GHz, 13GB RAM, GPU NVIDIA Tesla T4 16GB). Hệ thống được cài đặt trên ngôn ngữ Python 3.10.12, kết hợp với các thư viện nền tảng bao gồm Scikit-learn 1.2.2 và Imbalanced-learn 0.10.1.
 
-\subsection{Môi trường thực nghiệm}
-Hệ thống được phát triển trên Python 3.12, triển khai trên nền tảng đám mây Google Colaboratory với vi xử lý Intel Xeon (2.20GHz) và 12.6GB RAM. Các thư viện được sử dụng gồm: \texttt{scikit-learn} (tiền xử lý, Random Forest, Logistic Regression), \texttt{xgboost}, \texttt{lightgbm} và \texttt{imbalanced-learn} (RUS và ENN).
-
-\subsection{Các chỉ số đánh giá}
-Chúng tôi đánh giá hiệu năng mô hình qua các chỉ số:
-\begin{itemize}
-    \item \textbf{Accuracy, Precision, Recall, F1-score và FPR}: Các chỉ số phân loại phổ biến được tính toán dựa trên ma trận nhầm lẫn (Confusion Matrix). Mức độ quan trọng đặc biệt được đặt vào tỷ lệ dương tính giả (FPR) vì cảnh báo giả ảnh hưởng nghiêm trọng đến hệ thống NIDS trong thực tế.
-    \item \textbf{AUC-ROC và AUC-PR}: Đo lường diện tích dưới đường cong ROC và đường cong Precision-Recall để đánh giá độ chính xác trên dữ liệu mất cân bằng.
-    \item \textbf{Độ trễ suy luận (Inference Latency)}: Thời gian phân loại tính bằng mili giây trên mỗi 1.000 mẫu suy luận (ms/1k).
-\end{itemize}
-
-\subsection{Phương pháp thực nghiệm}
+\subsection{Kịch bản thực nghiệm và Đánh giá hiệu năng}
+Chuỗi thực nghiệm gồm ba kịch bản chính:
 \begin{enumerate}
-    \item \textit{So sánh baseline}: So sánh mô hình Stacking đề xuất với từng mô hình đơn lẻ (XGBoost, LightGBM, Random Forest) trên tập kiểm tra.
-    \item \textit{Thử nghiệm bóc tách (Ablation Study)}: Lần lượt loại bỏ/thay thế từng phần của mô hình (ENN, mô hình Stacking, Random Forest) để định lượng đóng góp của chúng.
-    \item \textit{Kiểm định độ ổn định}: Áp dụng 5-fold stratified cross-validation trên tập huấn luyện 80\% để kiểm chứng tính bền vững của mô hình.
+    \item \textit{Tác động của tiền xử lý}: Đánh giá hiệu quả phương pháp lai RUS-ENN so với dữ liệu nguyên bản.
+    \item \textit{Năng lực phát hiện}: So sánh độ chính xác của Teacher với các kiến trúc học máy phổ biến.
+    \item \textit{Đánh giá tài nguyên tại biên}: So sánh kích thước mô hình và độ trễ suy luận (ms) trên phần cứng CPU để làm rõ giá trị của chưng cất tri thức.
 \end{enumerate}
+
+Do tập dữ liệu mất cân bằng nghiêm trọng, việc đánh giá chỉ dựa trên Accuracy sẽ không phản ánh đúng hiệu năng của mô hình. Do đó, chúng tôi sử dụng \textbf{F1-Score} làm tiêu chuẩn định lượng chính. F1-Score là trung bình điều hòa giữa Precision (Độ chuẩn xác - khả năng giảm cảnh báo giả) và Recall (Độ nhạy - khả năng phát hiện tấn công thực tế).

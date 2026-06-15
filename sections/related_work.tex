@@ -1,10 +1,10 @@
 \section{Các nghiên cứu liên quan}
-Hệ thống Phát hiện Xâm nhập Mạng (NIDS) hiện đại đòi hỏi khả năng xử lý mất cân bằng dữ liệu, suy luận thời gian thực và triển khai hiệu quả tại biên.
+Sự phát triển của NIDS hiện đại xoay quanh ba bài toán: xử lý mất cân bằng dữ liệu, tốc độ suy luận và tối ưu triển khai tại biên.
 
-\subsection{Kiến trúc lai và tối ưu cho biên}
-Các mô hình học sâu lai (như CNN, LSTM, Attention)~\cite{hu2024improved, ji2025hybrid} mang lại độ chính xác cao nhưng độ trễ suy luận lớn. Do đó, các nghiên cứu gần đây dịch chuyển sang tối ưu hóa kiến trúc gọn nhẹ như Autoencoder-LSTM~\cite{hejazi2025lightweight_botnet_iot} hay học sâu lai tối giản~\cite{altaie2024hybrid_lightweight_ids} nhằm giảm độ trễ và chi phí tính toán khi triển khai thực tế trên phần cứng giới hạn như Raspberry Pi.
+\subsection{Kiến trúc học sâu lai và xu hướng tối ưu hóa vùng biên}
+Sự kết hợp các kiến trúc học sâu (CNN, LSTM, Attention)~\cite{hu2024improved, ji2025hybrid} đã cải thiện đáng kể độ chính xác nhưng lại gặp rào cản về độ trễ và tiêu thụ năng lượng. Để khắc phục, xu hướng nghiên cứu đang dịch chuyển sang thiết kế mạng tinh gọn. Các giải pháp như Autoencoder-LSTM~\cite{hejazi2025lightweight_botnet_iot} hay mạng học sâu lai tối giản~\cite{altaie2024hybrid_lightweight_ids} đã giúp giảm chi phí vận hành trên nền tảng nhúng (như Raspberry Pi).
 
-\subsection{Hệ thống thời gian thực và xử lý mất cân bằng}
-Đối với dữ liệu lưu lượng lớn, hướng tiếp cận phân tán sử dụng Kafka và Spark Streaming~\cite{kumar2025kafka_spark_ids} giúp phân tích luồng dữ liệu thời gian thực. Bên cạnh đó, để giải quyết mất cân bằng lớp, các nghiên cứu mới đang chuyển đổi từ các kỹ thuật lấy mẫu cổ điển sang các mô hình sinh dữ liệu như GAN (ví dụ TMG-GAN~\cite{ding2024tmg} hay các biến thể cho SDN~\cite{shamim2025gan_sdn_ids}) nhằm bảo toàn tốt hơn phân phối của các lớp tấn công hiếm.
+\subsection{Hệ thống phân tích thời gian thực và tái cân bằng dữ liệu}
+Các hệ thống NIDS thường sử dụng Apache Kafka và Spark Streaming~\cite{kumar2025kafka_spark_ids} để duy trì tốc độ phân tích. Đồng thời, vấn đề mất cân bằng lớp được giải quyết bằng các mô hình sinh dữ liệu tiên tiến như TMG-GAN~\cite{ding2024tmg, shamim2025gan_sdn_ids}, cho thấy hiệu quả trong việc khôi phục mẫu tấn công hiếm.
 
-Mặc dù đạt được những tiến bộ riêng lẻ, rất ít giải pháp đáp ứng đồng thời cả ba yêu cầu: độ chính xác cao, xử lý mất cân bằng tốt và độ trễ siêu thấp cho thiết bị biên. Giải pháp hai giai đoạn đề xuất của chúng tôi khắc phục hạn chế này bằng cách kết hợp RUS, ENN, Stacking và chưng cất tri thức.
+Mặc dù đã có nhiều bước tiến lớn, các nghiên cứu hiện tại vẫn chưa giải quyết trọn vẹn bài toán tối ưu đồng thời ba yếu tố: tối đa hóa độ chính xác, xử lý triệt để tình trạng mất cân bằng dữ liệu và đáp ứng yêu cầu độ trễ thấp của điện toán biên. Kiến trúc NIDS hai giai đoạn được đề xuất trong nghiên cứu này (tích hợp bộ lọc lai RUS-ENN, mô hình tổng hợp Stacking và chưng cất tri thức) được thiết kế nhằm khắc phục hoàn toàn những hạn chế nêu trên.
