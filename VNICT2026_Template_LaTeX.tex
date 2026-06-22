@@ -63,8 +63,8 @@
 % should be used if it is desired that the figures are to be displayed in
 % draft mode.
 %
-\documentclass[10pt, conference, a4paper, compsocconf]{IEEEtran}
-% customized to Vietnamese codes and free-modifying header/footer by Nguyễn Trường Thắng
+\documentclass[conference]{IEEEtran}
+% Định dạng IEEE conference chuẩn (US Letter mặc định, theo template IEEE); tiếng Việt qua fontspec + polyglossia
 \usepackage{amsmath,amsxtra,amssymb,amsthm,latexsym,amscd,amsfonts}
 \usepackage{fontspec}
 \setmainfont{Times New Roman}
@@ -72,6 +72,8 @@
 \setmainlanguage{vietnamese}
 \setotherlanguage{english}
 \usepackage{cite}
+% Thuật toán: dùng algorithm2e (đi kèm trong thư mục dự án; algorithm/algorithmic
+% KHÔNG có trong TeX Live basic của máy nên không dùng được).
 \usepackage[ruled,vlined,linesnumbered]{algorithm2e}
 \SetAlgorithmName{Thuật toán}{thuật toán}{Danh sách thuật toán}
 \SetKwInOut{KwIn}{Đầu vào}
@@ -86,27 +88,8 @@
 %% *has* to load after the geometry package!)
 
 
-%%% Edited 22/3/2015 (NHA)
-
-\usepackage[top=2.7cm, bottom = 5.4cm, left=2.72cm, right = 3.0cm]{geometry}
-\headsep = 0.7cm
-\headheight = 1.0cm 
-\footskip = 1.0cm
-\voffset = -0.74 cm 
-%%%%
-
-\usepackage{fancyhdr}
-\pagestyle{fancy}
-%\fancyhf{}
-
-
-
-%% Now begin customising things. See the fancyhdr docs for more info.
-
-%\renewcommand{\chaptermark}[1]{\markboth{\MakeUppercase{#1}}{}}
-\renewcommand{\sectionmark}[1]{\markright{\MakeUppercase{#1}}{}}
-\renewcommand{\headrulewidth}{0pt}
-% end of customization
+%%% Header/footer reverted to standard IEEE conference defaults.
+%%% (VNICT-specific geometry override and fancyhdr running head removed for FAIR.)
 
 % Add the compsocconf option for Computer Society conferences.
 %
@@ -278,8 +261,9 @@
 
 
 
-%\usepackage[caption=false]{caption}
-\usepackage[font=footnotesize]{subfig}
+% subfig đã gỡ: bài không dùng subfigure, và subfig kéo theo caption.sty ghi đè
+% caption chuẩn IEEE (theo cảnh báo trong IEEEtran HOWTO). Nếu sau này cần
+% subfigure, hãy nạp lại với: \usepackage[caption=false,font=footnotesize]{subfig}
 % subfig.sty, also written by Steven Douglas Cochran, is the modern
 % replacement for subfigure.sty. However, subfig.sty requires and
 % automatically loads Axel Sommerfeldt's caption.sty which will override
@@ -365,34 +349,8 @@
 %}
 %\makeatother
 
-\makeatletter
-\def\ps@IEEEtitlepagestyle{%
-\def\@oddhead{\centering{\mbox{\footnotesize{\textit{\;\;\;\; Hội thảo quốc gia lần thứ XXIX: Một số vấn đề chọn lọc của Công nghệ thông tin và truyền thông -- Hà Nội, 7-8/11/2026}}}}%
-\def\@evenhead{\centering{\mbox{\footnotesize{\textit{\;\;\;\; Hội thảo quốc gia lần thứ XXIX: Một số vấn đề chọn lọc của Công nghệ thông tin và truyền thông -- Hà Nội, 7-8/11/2026}}}}}%
-\def\@oddfoot{\scriptsize \thepage \hfil }%
-\def\@evenfoot{\scriptsize \hfil \thepage}
-}
-}
-\makeatother
-
-
-
 \begin{document}
-\pagenumbering{gobble}
-\fontsize{10}{12}
-\selectfont
-
-% customizing header/footer via fancyhdr by Nguyễn Trường Thắng
-%% Configuration of the header strings for the frontmatter pages.
-%\fancyhead[RO]{{\footnotesize\rightmark}ABC\hspace{2em}\thepage}
-%\setcounter{tocdepth}{2}
-%\fancyhead[LE]{\thepage\hspace{2em}ABC\footnotesize{\leftmark}}
-%\fancyhead[RE,LO]{}
-%\fancyhead[RO]{{\footnotesize\rightmark}\hspace{2em}\thepage}
-
-%% Configuration of the header strings for the main manuscript pages.
-\fancyhead[RE,LO]{\centering{\footnotesize{\textit{Hội thảo quốc gia lần thứ XXIX: Một số vấn đề chọn lọc của Công nghệ thông tin và truyền thông -- Hà Nội, 7-8/11/2026}}}}
-% end of customization
+\pagestyle{plain}
 
 %
 % paper title
@@ -405,11 +363,11 @@
 % affiliations
 
 %%% Edited 01/01/2022 (NHA) %%%
-\author{\IEEEauthorblockN{Nguyễn Vũ Thái\IEEEauthorrefmark{1}, Bùi Văn Dũng\IEEEauthorrefmark{2}\IEEEauthorrefmark{3}}
-	\IEEEauthorblockA{\IEEEauthorrefmark{1}Trường Đại học Giao thông Vận tải, Phân hiệu tại TP. Hồ Chí Minh}
-	\IEEEauthorblockA{\IEEEauthorrefmark{2}Đại học Quốc gia TP. Hồ Chí Minh}
-	\IEEEauthorblockA{\IEEEauthorrefmark{3}Trường Đại học Công nghệ Thông tin}
-	\IEEEauthorblockA{Email: nvthai@utc2.edu.vn, dungbv.17@grad.uit.edu.vn}
+\author{\IEEEauthorblockN{Nguyễn Vũ Thái}
+\IEEEauthorblockA{\textit{Phân hiệu tại TP. Hồ Chí Minh} \\
+\textit{Trường Đại học Giao thông Vận tải} \\
+TP. Hồ Chí Minh, Việt Nam \\
+nvthai@utc2.edu.vn}
 }
 
 % conference papers do not typically use \thanks and this command
@@ -447,8 +405,15 @@
 
 \input{sections/abstract}
 
+% === English front-matter (required by FAIR for Vietnamese submissions) ===
+\vspace{0.8em}
+\noindent\textbf{Title:} Intrusion Detection for Edge Computing via a Stacking Ensemble with Hybrid Resampling and Knowledge Distillation\par
+\noindent\textbf{Author:} Nguyen Vu Thai -- University of Transport and Communications, Ho Chi Minh City Campus -- nvthai@utc2.edu.vn\par
+\vspace{0.3em}
+\noindent\textbf{Abstract:} The growing sophistication of cyberattacks poses a dual challenge for Intrusion Detection Systems (IDS): achieving high accuracy on highly imbalanced traffic while remaining lightweight enough for deployment on edge devices. To address this multi-objective problem, we propose a two-stage binary-classification IDS for the CICIDS2017 dataset. The first stage builds a Teacher model based on a Stacking ensemble (XGBoost, LightGBM, and Random Forest); to counter class imbalance, the training data is refined by a hybrid Random Under-Sampling (RUS) and Edited Nearest Neighbours (ENN) strategy. The second stage applies soft-label Knowledge Distillation, transferring the Teacher's predicted-probability ``dark knowledge'' to a compact Decision Tree Student. Experiments show the Teacher reaches over 99.8\% accuracy, while the distilled Student retains over 99\% accuracy and substantially reduces inference latency and storage footprint, confirming the feasibility of real-time network security on resource-constrained IoT devices.\par
+
 \begin{IEEEkeywords}
-Intrusion Detection System, Edge Computing, Knowledge Distillation, Ensemble Learning, Extreme Data Imbalance, Hybrid Resampling, ENN, CICIDS2017.
+Intrusion Detection System, Edge Computing, Knowledge Distillation, Ensemble Learning, Class Imbalance.
 \end{IEEEkeywords}
 
 
@@ -472,7 +437,8 @@ Intrusion Detection System, Edge Computing, Knowledge Distillation, Ensemble Lea
 \input{sections/conclusion}
 
 %\clearpage
-\IEEEtriggeratref{11}
+% \IEEEtriggeratref đã bỏ: để IEEEtran tự cân hai cột tài liệu (con số 11 cũ
+% gây dồn [11]-[14] sang trang sau khi danh sách tài liệu thay đổi).
 \bibliographystyle{IEEEtran}
 \bibliography{references}
 

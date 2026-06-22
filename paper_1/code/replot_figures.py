@@ -3,7 +3,7 @@ import json
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from config import RESULTS_DIR, FIGURES_DIR
+from config import RESULTS_DIR, FIGURES_DIR, MODELS_DIR, TRAIN_PATH
 
 def replot_confusion_matrices():
     results_path = os.path.join(RESULTS_DIR, "all_results.json")
@@ -48,7 +48,7 @@ def replot_confusion_matrices():
     print(f"Done! 2x2 Confusion matrix saved to: {output_path}")
 
 def replot_feature_importance():
-    model_path = os.path.join("/Users/thainguyenvu/Desktop/paper_1/results/models", "ensemble_model.joblib")
+    model_path = os.path.join(MODELS_DIR, "ensemble_model.joblib")
     if not os.path.exists(model_path):
         print(f"{model_path} not found!")
         return
@@ -62,7 +62,7 @@ def replot_feature_importance():
     
     # Extract feature names
     import pyarrow.parquet as pq
-    train_path = "/Users/thainguyenvu/Desktop/paper_1/data/train_data.parquet"
+    train_path = TRAIN_PATH
     if os.path.exists(train_path):
         dataset = pq.ParquetDataset(train_path)
         all_cols = dataset.schema.names

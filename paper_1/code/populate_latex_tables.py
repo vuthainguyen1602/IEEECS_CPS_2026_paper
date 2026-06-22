@@ -155,6 +155,108 @@ def populate_latex():
 
         latex = _sub_once(latex, pattern, build_lit_student, "Table2 Student DT")
 
+    # ===================================================================
+    # Table 3: tab:ablation — Cấu hình & Acc & F1 & FPR & AUC
+    # ===================================================================
+    abl = data.get("ablation_study", {})
+
+    def _abl_row(label, key):
+        nonlocal latex
+        m = abl.get(key)
+        if not m:
+            return
+        pattern = (re.escape(label) + r"\s*&\s*" + _CELL + r"\s*&\s*" + _CELL
+                   + r"\s*&\s*" + _CELL + r"\s*&\s*" + _CELL)
+
+        def build(_):
+            return (f"{label} & {format_num(m.get('Accuracy'))} "
+                    f"& {format_num(m.get('F1-Score'))} "
+                    f"& {format_num(m.get('FPR'), 6)} "
+                    f"& {format_num(m.get('AUC-ROC'))}")
+
+        latex = _sub_once(latex, pattern, build, f"Ablation {key}")
+
+    _abl_row("Stacking, không ENN", "Stacking (No ENN)")
+    _abl_row("Soft Voting + ENN", "Soft Voting (ENN)")
+    _abl_row("Stacking bỏ RF + ENN", "Stacking (XGB+LGBM only)")
+
+    if "Proposed (Stacking + ENN)" in abl:
+        mp = abl["Proposed (Stacking + ENN)"]
+        lbl = "Đề xuất (đủ 3 mô hình + ENN)"
+        pattern = (r"\\textbf\{" + re.escape(lbl) + r"\}\s*&\s*\\textbf\{" + _CELL
+                   + r"\}\s*&\s*\\textbf\{" + _CELL + r"\}\s*&\s*\\textbf\{" + _CELL
+                   + r"\}\s*&\s*\\textbf\{" + _CELL + r"\}")
+
+        def build_abl_prop(_):
+            return (r"\textbf{" + lbl + "} "
+                    f"& \\textbf{{{format_num(mp.get('Accuracy'))}}} "
+                    f"& \\textbf{{{format_num(mp.get('F1-Score'))}}} "
+                    f"& \\textbf{{{format_num(mp.get('FPR'), 6)}}} "
+                    f"& \\textbf{{{format_num(mp.get('AUC-ROC'))}}}")
+
+        latex = _sub_once(latex, pattern, build_abl_prop, "Ablation Proposed")
+
+    # ===================================================================
+    # Table 4: tab:student_variants — Acc & F1 & F1-macro & Trễ (ms/1k)
+    # ===================================================================
+    def _student_row(label, key, bold=False):
+        nonlocal latex
+        if not kd or key not in kd:
+            return
+        m = kd[key]
+        cells = [format_num(m.get('Accuracy')), format_num(m.get('F1-Score')),
+                 format_num(m.get('F1-Macro')),
+                 format_num(m.get('Inference_ms_per_1k'), 2)]
+        if bold:
+            pattern = (r"\\textbf\{" + re.escape(label) + r"\}\s*&\s*\\textbf\{" + _CELL
+                       + r"\}\s*&\s*\\textbf\{" + _CELL + r"\}\s*&\s*\\textbf\{" + _CELL
+                       + r"\}\s*&\s*\\textbf\{" + _CELL + r"\}")
+
+            def build(_):
+                return (r"\textbf{" + label + "} & "
+                        + " & ".join(f"\\textbf{{{c}}}" for c in cells))
+        else:
+            pattern = (re.escape(label) + r"\s*&\s*" + _CELL + r"\s*&\s*" + _CELL
+                       + r"\s*&\s*" + _CELL + r"\s*&\s*" + _CELL)
+
+            def build(_):
+                return f"{label} & " + " & ".join(cells)
+
+        latex = _sub_once(latex, pattern, build, f"Student {key}")
+
+    _student_row("Teacher (Stacking)", "teacher")
+    _student_row("Student-Soft (chưng cất)", "student_soft", bold=True)
+    _student_row("Student-Hard (nhãn cứng)", "student_hard")
+    _student_row("Student-Direct (không KD)", "student_direct")
+
+    # ===================================================================
+    # Table 5: tab:perclass — Hiệu năng theo từng lớp của Teacher
+    # ===================================================================
+    if ens:
+        def _pc_row(label, pkey, rkey, fkey, bold=False):
+            nonlocal latex
+            vals = [format_num(ens.get(pkey)), format_num(ens.get(rkey)),
+                    format_num(ens.get(fkey))]
+            if bold:
+                pattern = (r"\\textbf\{" + re.escape(label) + r"\}\s*&\s*\\textbf\{" + _CELL
+                           + r"\}\s*&\s*\\textbf\{" + _CELL + r"\}\s*&\s*\\textbf\{" + _CELL + r"\}")
+
+                def build(_):
+                    return (r"\textbf{" + label + "} & "
+                            + " & ".join(f"\\textbf{{{v}}}" for v in vals))
+            else:
+                pattern = (re.escape(label) + r"\s*&\s*" + _CELL + r"\s*&\s*" + _CELL
+                           + r"\s*&\s*" + _CELL)
+
+                def build(_):
+                    return f"{label} & " + " & ".join(vals)
+
+            latex = _sub_once(latex, pattern, build, f"PerClass {label}")
+
+        _pc_row("BENIGN (bình thường)", "Precision-BENIGN", "Recall-BENIGN", "F1-BENIGN")
+        _pc_row("ATTACK (tấn công)", "Precision-ATTACK", "Recall-ATTACK", "F1-ATTACK")
+        _pc_row("Trung bình macro", "Precision-Macro", "Recall-Macro", "F1-Macro", bold=True)
+
     with open(latex_path, "w", encoding="utf-8") as f:
         f.write(latex)
     print(f"Successfully populated {latex_path}")

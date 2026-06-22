@@ -1,21 +1,7 @@
 \section{Kết quả và Phân tích}
 \subsection{Đánh giá tổng thể: Hiệu năng nhận diện và Độ trễ suy luận}
-\begin{figure*}[!t]
-\centering
-\includegraphics[width=0.85\textwidth]{figures/roc_pr_curves.png}
-\caption{Đường cong ROC và Precision-Recall của các mô hình (hiển thị góc nhìn toàn cảnh và vùng phóng to).}
-\label{fig:roc_pr}
-\end{figure*}
-
-\begin{figure*}[!t]
-\centering
-\includegraphics[width=0.85\textwidth]{figures/confusion_matrices.png}
-\caption{Ma trận Nhầm lẫn: Đối chiếu giữa các mô hình đơn lẻ và kiến trúc Stacking Teacher.}
-\label{fig:cm}
-\end{figure*}
-
 Bảng~\ref{tab:overall_results} tóm tắt hiệu năng phân loại và cấu hình tài nguyên của các mô hình trên tập kiểm thử độc lập.
-\begin{table}[htbp]
+\begin{table}[!t]
 \centering
 \caption{So sánh tổng hợp về Hiệu năng, Độ trễ suy luận và Dung lượng lưu trữ}
 \label{tab:overall_results}
@@ -36,22 +22,19 @@ Random Forest    & 0,9985 & 0,9957 & 0,9999 & -- & -- \\
 }
 \end{table}
 
-\begin{table}[htbp]
+\begin{table}[!t]
 \centering
 \caption{So sánh hiệu năng với các nghiên cứu gần đây trên CICIDS2017}
 \label{tab:literature_comparison}
 \footnotesize
-\begin{tabularx}{\columnwidth}{@{}p{2.3cm}Xcc@{}}
+\begin{tabularx}{\columnwidth}{@{}>{\raggedright\arraybackslash}p{2.3cm}Xcc@{}}
 \toprule
 \textbf{Nghiên cứu} & \textbf{Phương pháp} & \textbf{Acc. (\%)} & \textbf{F1 (\%)} \\
 \midrule
 Amara et al. (2025)~\cite{amara2025stacked}     & CNN+TCN+LSTM Ens.     & 99,99 & 100,0 \\
-Nguyen et al. (2024)~\cite{nguyen2024apelid}    & Augmented WGAN + Ens. & 99,78 & --    \\
-Ding et al. (2024)~\cite{ding2024tmg}           & TMG-GAN + DNN         & 99,81 & 99,72 \\
-Khan et al. (2024)~\cite{khan2024balanced}       & SMOTE-Tomek + DT      & 99,96 & --    \\
-Hu et al. (2024)~\cite{hu2024improved}          & Hybrid Attention      & 99,79 & --    \\
 Ji (2025)~\cite{ji2025hybrid}                   & GRU-ResCBANet         & 99,83 & --    \\
-Sarhan et al. (2022)~\cite{sarhan2022towards}   & ML Baseline (TII)     & 99,70 & 99,20 \\
+Huang et al. (2025)~\cite{huang2025stacking}    & Hybrid FS + Stacking  & 99,97 & --    \\
+Jouybari et al. (2025)~\cite{jouybari2025stacking} & Filter FS + Stacking  & 99,79 & --    \\
 \midrule
 \textbf{Stacking Teacher}                     & \textbf{Hybrid Ensemble} & \textbf{99,87} & \textbf{99,63} \\
 \textbf{Student DT (Chưng cất)}               & \textbf{Lightweight DT}  & \textbf{99,48} & \textbf{98,45} \\
@@ -59,14 +42,103 @@ Sarhan et al. (2022)~\cite{sarhan2022towards}   & ML Baseline (TII)     & 99,70 
 \end{tabularx}
 \end{table}
 
-Các số liệu minh chứng mô hình Stacking Teacher đạt hiệu năng rất cao (F1 0,9963). Đặc biệt, mô hình Student sau chưng cất vẫn duy trì độ chính xác (F1 0,9845) nhưng mang lại ưu thế vượt trội khi triển khai: tốc độ suy luận tăng \textbf{368 lần} (giảm từ 60189,94 ms xuống 163,62 ms/1k mẫu) và nén dung lượng \textbf{1.758 lần} (từ 22,50 MB xuống 0,0128 MB). 
+Các số liệu minh chứng mô hình Stacking Teacher đạt hiệu năng rất cao (F1 0,9963). Đặc biệt, mô hình Student sau chưng cất vẫn duy trì độ chính xác (F1 0,9845) nhưng mang lại ưu thế vượt trội khi triển khai: tốc độ suy luận tăng \textbf{368 lần} (giảm từ 60189,94 ms xuống 163,62 ms/1k mẫu) và giảm dung lượng lưu trữ \textbf{1.758 lần} (từ 22,50 MB xuống 0,0128 MB).
+
+Bảng~\ref{tab:perclass} trình bày hiệu năng tách theo từng lớp của mô hình Teacher. Nhờ chiến lược lấy mẫu lai, mô hình đạt Precision và Recall cao và cân bằng ở cả hai lớp, thể hiện qua giá trị macro-F1 cao --- chỉ số phản ánh trung thực hơn Accuracy trên dữ liệu mất cân bằng vì nó xét đều cả lớp bình thường lẫn lớp tấn công.
+
+\begin{table}[!t]
+\centering
+\caption{Hiệu năng theo từng lớp của mô hình Teacher (tập kiểm thử)}
+\label{tab:perclass}
+\footnotesize
+\begin{tabularx}{\columnwidth}{@{}Xccc@{}}
+\toprule
+\textbf{Lớp} & \textbf{Precision} & \textbf{Recall} & \textbf{F1} \\
+\midrule
+BENIGN (bình thường) & -- & -- & -- \\
+ATTACK (tấn công)    & -- & -- & -- \\
+\midrule
+\textbf{Trung bình macro} & \textbf{--} & \textbf{--} & \textbf{--} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{So sánh các biến thể Student: giá trị của chưng cất}
+Để khẳng định vai trò của bước chưng cất, chúng tôi so sánh ba biến thể Student cùng cấu hình: \emph{Student-Soft} (học nhãn mềm từ Teacher), \emph{Student-Hard} (học nhãn cứng) và \emph{Student-Direct} (huấn luyện trực tiếp trên nhãn gốc, không qua Teacher). Bảng~\ref{tab:student_variants} cho thấy chưng cất nhãn mềm đạt F1 cao nhất trong ba biến thể, xác nhận rằng tri thức xác suất của Teacher giúp Student khái quát hóa tốt hơn so với việc chỉ học nhãn cứng hay nhãn gốc.
+
+\begin{table}[!t]
+\centering
+\caption{So sánh các biến thể mô hình Student trên tập kiểm thử}
+\label{tab:student_variants}
+\footnotesize
+\begin{tabularx}{\columnwidth}{@{}Xcccc@{}}
+\toprule
+\textbf{Mô hình} & \textbf{Acc.} & \textbf{F1} & \textbf{F1-macro} & \textbf{Trễ (ms/1k)} \\
+\midrule
+Teacher (Stacking)                & -- & -- & -- & -- \\
+\textbf{Student-Soft (chưng cất)} & \textbf{--} & \textbf{--} & \textbf{--} & \textbf{--} \\
+Student-Hard (nhãn cứng)          & -- & -- & -- & -- \\
+Student-Direct (không KD)         & -- & -- & -- & -- \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{figure*}[!t]
+\centering
+\includegraphics[width=0.85\textwidth]{figures/roc_pr_curves.png}
+\caption{Đường cong ROC và Precision-Recall của các mô hình (hiển thị góc nhìn toàn cảnh và vùng phóng to).}
+\label{fig:roc_pr}
+\end{figure*}
+
+\begin{figure*}[!t]
+\centering
+\includegraphics[width=0.72\textwidth]{figures/confusion_matrices.png}
+\caption{Ma trận Nhầm lẫn: Đối chiếu giữa các mô hình đơn lẻ và kiến trúc Stacking Teacher.}
+\label{fig:cm}
+\end{figure*}
 
 \subsection{Đường cong AUC-ROC/PR và Ma trận Nhầm lẫn}
 Hình~\ref{fig:roc_pr} hiển thị hiệu suất qua đường cong ROC và PR. AUC-PR của Teacher đạt 0,9999, và Student duy trì ở mức 0,9992, cho thấy độ ổn định xuất sắc trên dữ liệu mất cân bằng. Ma trận nhầm lẫn (Hình~\ref{fig:cm}) chỉ ra việc kết hợp kiến trúc Stacking với RUS-ENN đã giúp mô hình khắc phục triệt để tình trạng bỏ lọt các cuộc tấn công (giảm thiểu False Negatives), đồng thời vẫn kiểm soát chặt chẽ tỷ lệ cảnh báo giả ở mức cực thấp.
 
 \subsection{Thử nghiệm Loại bỏ Thành phần (Ablation Study)}
-Thử nghiệm phân rã cho thấy: (1) Quá trình tiền xử lý RUS-ENN đóng vai trò quyết định giúp nâng cao năng lực phát hiện các lớp tấn công hiếm (tăng mạnh Recall), khắc phục điểm yếu bỏ lọt tấn công của các mô hình cơ sở; (2) Mô hình phân loại tổng hợp trong Stacking mang lại độ chính xác vượt trội so với kỹ thuật Soft Voting truyền thống; (3) Việc tích hợp Random Forest giúp gia tăng tính đa dạng và cải thiện F1-score tổng thể.
+Bảng~\ref{tab:ablation} định lượng đóng góp của từng thành phần trong kiến trúc đề xuất. Kết quả cho thấy: (1) Quá trình tiền xử lý RUS-ENN đóng vai trò quyết định giúp nâng cao năng lực phát hiện các lớp tấn công hiếm (tăng mạnh Recall), khắc phục điểm yếu bỏ lọt tấn công của các mô hình cơ sở; (2) Mô hình phân loại tổng hợp trong Stacking mang lại độ chính xác vượt trội so với kỹ thuật Soft Voting truyền thống; (3) Việc tích hợp Random Forest giúp gia tăng tính đa dạng và cải thiện F1-score tổng thể.
+
+\begin{table}[!t]
+\centering
+\caption{Thử nghiệm loại bỏ thành phần (đánh giá trên tập kiểm thử)}
+\label{tab:ablation}
+\footnotesize
+\begin{tabularx}{\columnwidth}{@{}Xcccc@{}}
+\toprule
+\textbf{Cấu hình} & \textbf{Acc.} & \textbf{F1} & \textbf{FPR} & \textbf{AUC} \\
+\midrule
+Stacking, không ENN                   & -- & -- & -- & -- \\
+Soft Voting + ENN                     & -- & -- & -- & -- \\
+Stacking bỏ RF + ENN                  & -- & -- & -- & -- \\
+\textbf{Đề xuất (đủ 3 mô hình + ENN)} & \textbf{--} & \textbf{--} & \textbf{--} & \textbf{--} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Độ ổn định qua kiểm chứng chéo}
+Để đánh giá độ ổn định của kiến trúc đề xuất, chúng tôi thực hiện kiểm chứng chéo phân tầng (Stratified $K$-Fold, $K=5$) trên tập huấn luyện. Hình~\ref{fig:cv} biểu diễn giá trị trung bình kèm độ lệch chuẩn của các chỉ số qua các lần gập. Độ lệch chuẩn rất nhỏ trên tất cả chỉ số cho thấy mô hình ổn định, ít phụ thuộc vào cách phân chia dữ liệu và không có dấu hiệu quá khớp.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=\columnwidth]{figures/cv_stability.png}
+\caption{Độ ổn định qua kiểm chứng chéo $K$-Fold (trung bình $\pm$ độ lệch chuẩn).}
+\label{fig:cv}
+\end{figure}
 
 \subsection{So sánh với các nghiên cứu gần đây}
 Bảng~\ref{tab:literature_comparison} so sánh hiệu năng đề xuất với các nghiên cứu NIDS hiện đại (2024--2026). Giải pháp của chúng tôi đạt hiệu năng cạnh tranh với các mô hình học sâu phức tạp nhưng lại nhẹ và nhanh hơn vượt trội. Mô hình Student siêu nhẹ (0,0128 MB, 163,62 ms/1k mẫu) tạo sự cân bằng tối ưu giữa hiệu năng và tính khả thi khi triển khai trên IoT.
+
+\section{Thảo luận và Hạn chế}
+Điểm mạnh cốt lõi của giải pháp không nằm ở việc vượt qua các mô hình học sâu về độ chính xác tuyệt đối, mà ở \emph{sự cân bằng giữa hiệu năng và chi phí triển khai}: mô hình Student giữ được độ chính xác tiệm cận Teacher trong khi giảm hàng nghìn lần dung lượng và độ trễ, qua đó khả thi cho thiết bị biên hạn chế tài nguyên.
+
+Tuy vậy, nghiên cứu còn một số hạn chế cần lưu ý. Thứ nhất, độ trễ và dung lượng được đo trên CPU của nền tảng Google Colab (Intel Xeon), \emph{chưa phải} phần cứng biên thực tế như Raspberry Pi hay vi điều khiển; các giá trị tuyệt đối có thể thay đổi khi triển khai trên thiết bị nhúng, dù tỷ lệ cải thiện giữa Teacher và Student được kỳ vọng vẫn giữ nguyên xu hướng. Thứ hai, bài báo giới hạn ở bài toán phân loại nhị phân (bình thường/tấn công); mức độ mất cân bằng và độ khó sẽ tăng đáng kể khi chuyển sang phân loại đa lớp theo từng loại tấn công cụ thể. Thứ ba, việc so sánh với các công trình khác (Bảng~\ref{tab:literature_comparison}) chỉ mang tính tham khảo, do khác biệt về giao thức đánh giá, cách chia dữ liệu và tiền xử lý giữa các nghiên cứu khiến việc đối chiếu trực tiếp khó tuyệt đối công bằng. Cuối cùng, kỹ thuật chưng cất nhãn mềm hiện dùng cây hồi quy xấp xỉ xác suất của Teacher; các hướng như điều chỉnh nhiệt độ (temperature) hay chưng cất cho bài toán đa lớp vẫn còn để ngỏ.
+
+Về mặt triển khai thực tế, kích thước cực nhỏ của mô hình Student (khoảng 12,8 KB) cho phép nhúng trực tiếp vào các thiết bị tài nguyên hạn chế như cổng IoT hay vi điều khiển, trong khi độ phức tạp suy luận $O(\log n)$ của Cây quyết định giúp đạt thông lượng cao, phù hợp cho phát hiện ở tốc độ đường truyền. Một kịch bản triển khai hấp dẫn là kiến trúc phân tầng: Student đóng vai trò bộ lọc tiền tuyến tại biên để xử lý phần lớn lưu lượng với độ trễ thấp, còn những trường hợp mơ hồ mới được chuyển lên mô hình Teacher đầy đủ ở máy chủ/đám mây --- qua đó cân bằng giữa độ trễ, chi phí truyền tải và độ chính xác.
+
+Trong các hướng nghiên cứu tương lai, ngoài việc kiểm chứng trên phần cứng biên thực tế và mở rộng sang phân loại đa lớp, chúng tôi dự định khảo sát cơ chế cập nhật trực tuyến (online learning) để mô hình thích ứng với các biến thể tấn công mới, cũng như đánh giá tính bền vững của giải pháp trước các tấn công đối kháng (adversarial) nhắm vào bộ phát hiện.
 
