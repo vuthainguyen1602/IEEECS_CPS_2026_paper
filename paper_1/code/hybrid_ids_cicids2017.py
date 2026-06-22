@@ -39,6 +39,7 @@ from sklearn.model_selection import StratifiedKFold
 from xgboost import XGBClassifier
 from lightgbm import LGBMClassifier
 from imblearn.under_sampling import EditedNearestNeighbours, RandomUnderSampler
+from imblearn.combine import SMOTEENN
 
 from config import (
     RANDOM_SEED, set_global_seed,
@@ -113,6 +114,15 @@ def load_and_preprocess(train_filepath, test_filepath):
     y_train = train_df[target_col]
     X_test = test_df[feature_cols]
     y_test = test_df[target_col]
+
+    # Report class balance so the "imbalance" claim is grounded in the
+    # actual binary distribution (BENIGN vs ATTACK), not a multiclass figure.
+    train_counts = y_train.value_counts()
+    minority_label = train_counts.idxmin()
+    minority_ratio = train_counts.min() / train_counts.sum() * 100
+    log_message(f"Binary class distribution (train):\n{train_counts}")
+    log_message(f"Minority class = {minority_label} "
+                f"({minority_ratio:.4f}% of training samples)")
 
     X_train.fillna(0, inplace=True)
     X_test.fillna(0, inplace=True)
@@ -246,11 +256,30 @@ def build_ensemble(base_models):
 
 
 def compute_metrics(y_true, y_pred, y_prob=None):
-    """Compute all evaluation metrics and return as dict."""
+    """Compute all evaluation metrics and return as dict.
+
+    Because CICIDS2017 (binary) is highly imbalanced, we report both the
+    positive-class (ATTACK) metrics AND macro-averaged metrics, which give
+    equal weight to the BENIGN and ATTACK classes and are far more
+    informative under imbalance than weighted/accuracy figures.
+    Per-class Precision/Recall/F1 are also returned for full transparency.
+    """
     acc = accuracy_score(y_true, y_pred)
-    prec = precision_score(y_true, y_pred, zero_division=0)
-    rec = recall_score(y_true, y_pred, zero_division=0)
-    f1 = f1_score(y_true, y_pred, zero_division=0)
+    # Positive-class (ATTACK = 1) metrics — primary detection metrics
+    prec = precision_score(y_true, y_pred, pos_label=1, zero_division=0)
+    rec = recall_score(y_true, y_pred, pos_label=1, zero_division=0)
+    f1 = f1_score(y_true, y_pred, pos_label=1, zero_division=0)
+
+    # Macro-averaged metrics — treat both classes equally
+    prec_macro = precision_score(y_true, y_pred, average='macro', zero_division=0)
+    rec_macro = recall_score(y_true, y_pred, average='macro', zero_division=0)
+    f1_macro = f1_score(y_true, y_pred, average='macro', zero_division=0)
+
+    # Per-class breakdown (0 = BENIGN, 1 = ATTACK)
+    prec_pc = precision_score(y_true, y_pred, average=None, labels=[0, 1], zero_division=0)
+    rec_pc = recall_score(y_true, y_pred, average=None, labels=[0, 1], zero_division=0)
+    f1_pc = f1_score(y_true, y_pred, average=None, labels=[0, 1], zero_division=0)
+
     cm = confusion_matrix(y_true, y_pred)
     tn, fp, fn, tp = cm.ravel()
     fpr = fp / (fp + tn) if (fp + tn) > 0 else 0
@@ -258,6 +287,12 @@ def compute_metrics(y_true, y_pred, y_prob=None):
     metrics = {
         'Accuracy': acc, 'Precision': prec, 'Recall': rec,
         'F1-Score': f1, 'FPR': fpr,
+        'Precision-Macro': prec_macro, 'Recall-Macro': rec_macro,
+        'F1-Macro': f1_macro,
+        'Precision-BENIGN': float(prec_pc[0]), 'Recall-BENIGN': float(rec_pc[0]),
+        'F1-BENIGN': float(f1_pc[0]),
+        'Precision-ATTACK': float(prec_pc[1]), 'Recall-ATTACK': float(rec_pc[1]),
+        'F1-ATTACK': float(f1_pc[1]),
         'TP': int(tp), 'FP': int(fp), 'TN': int(tn), 'FN': int(fn)
     }
 
@@ -272,10 +307,15 @@ def print_metrics(name, metrics):
     print("-" * 30)
     print(f"  {name}")
     print("-" * 30)
-    for key in ['Accuracy', 'Precision', 'Recall', 'F1-Score', 'FPR', 'AUC-ROC', 'AUC-PR']:
+    for key in ['Accuracy', 'Precision', 'Recall', 'F1-Score',
+                'F1-Macro', 'Precision-Macro', 'Recall-Macro',
+                'FPR', 'AUC-ROC', 'AUC-PR']:
         if key in metrics:
             fmt = '.6f' if key == 'FPR' else '.4f'
             print(f"  {key:15s}: {metrics[key]:{fmt}}")
+    if 'F1-BENIGN' in metrics:
+        print(f"  Per-class F1   : BENIGN={metrics['F1-BENIGN']:.4f}, "
+              f"ATTACK={metrics['F1-ATTACK']:.4f}")
     print(f"  Confusion Matrix: TN={metrics['TN']}, FP={metrics['FP']}, FN={metrics['FN']}, TP={metrics['TP']}")
     print("-" * 30)
 
@@ -599,14 +639,16 @@ def run_ablation_study(X_train_raw, y_train_raw, X_train_bal, y_train_bal, X_tes
     ablation_results = {}
 
     # --- Experiment 1: Ensemble WITHOUT ENN ---
-    log_message("[Ablation 1/4] Training Stacking WITHOUT ENN...")
-    
+    log_message("[Ablation 1/4] Training Stacking WITHOUT ENN (raw imbalanced data)...")
+
     t1_start = time.time()
+    base_1 = build_base_models(num_features)
     abl1_ensemble = StackingClassifier(
-        estimators=[('xgb', base_models['xgb']), ('lgbm', base_models['lgbm']), ('rf', base_models['rf'])],
-        final_estimator=LogisticRegression(max_iter=1000),
-        cv=2,
-        n_jobs=-1
+        estimators=base_1,
+        final_estimator=LogisticRegression(class_weight='balanced', max_iter=1000, n_jobs=-1),
+        cv=STACKING_CV,
+        n_jobs=-1,
+        stack_method='predict_proba'
     )
     abl1_ensemble.fit(X_train_raw, y_train_raw)
     t1 = time.time() - t1_start
@@ -646,8 +688,10 @@ def run_ablation_study(X_train_raw, y_train_raw, X_train_bal, y_train_bal, X_tes
     )
     base_3 = [('xgb', xgb_clf), ('lgbm', lgb_clf)]
     ens_3 = StackingClassifier(
-        estimators=base_3, final_estimator=LogisticRegression(n_jobs=-1),
-        cv=3, n_jobs=1, verbose=0
+        estimators=base_3,
+        final_estimator=LogisticRegression(class_weight='balanced', n_jobs=-1),
+        cv=STACKING_CV, n_jobs=-1, verbose=0,
+        stack_method='predict_proba'
     )
     start = time.time()
     ens_3.fit(X_train_bal, y_train_bal)
@@ -843,11 +887,11 @@ def main():
 
     plot_feature_importance(trained_models, feature_names)
 
-    # ablation_results = run_ablation_study(
-    #     X_train_scaled, y_train, X_train_bal, y_train_bal,
-    #     X_test_scaled, y_test, num_features
-    # )
-    ablation_results = {}
+    ablation_results = run_ablation_study(
+        X_train_scaled, y_train, X_train_bal, y_train_bal,
+        X_test_scaled, y_test, num_features
+    )
+    # Experiment 4/4: the full proposed model (already trained above)
     ablation_results['Proposed (Stacking + ENN)'] = ensemble_metrics
 
 

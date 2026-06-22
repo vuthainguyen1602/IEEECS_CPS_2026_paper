@@ -1,141 +1,164 @@
+"""
+Populate the LaTeX result tables in ``sections/results.tex`` from the JSON
+artifacts produced by the experiment pipeline.
+
+It fills exactly the two tables that currently exist in results.tex:
+
+  * Table ``tab:overall_results`` — columns: Acc. | F1 | AUC | Trễ (ms/1k) | Size (MB)
+        rows: XGBoost, LightGBM, Random Forest, Stacking (Teacher), Student (DT)
+  * Table ``tab:literature_comparison`` — columns: Acc. (%) | F1 (%)
+        proposed rows: "Stacking Teacher" and "Student DT (Chưng cất)"
+
+Sources:
+  * results/all_results.json  -> baseline_comparison{xgb,lgbm,rf}, ensemble
+  * results/kd_results.json   -> teacher (latency/size), student (soft, distilled)
+
+The replacements are done with regex + replacement *functions* (not strings),
+so no backslash-escaping gymnastics are required.
+"""
+
 import json
 import os
 import re
 
+
 def format_num(val, precision=4):
-    """Formats a number with a comma as the decimal separator."""
+    """Format a number with a comma as the decimal separator (vi-VN)."""
     if val is None or val == "--":
+        return "--"
+    if isinstance(val, float) and val != val:  # NaN
         return "--"
     return f"{val:.{precision}f}".replace(".", ",")
 
+
+# A numeric cell may be a vi-VN number (digits, comma/dot, minus) or a literal "--".
+_CELL = r"(?:[0-9.,\-]+|--)"
+
+
+def _sub_once(content, pattern, build_fn, label):
+    """Apply a single regex substitution, warning if nothing matched."""
+    new_content, n = re.subn(pattern, build_fn, content, count=1)
+    if n == 0:
+        print(f"  [warn] pattern not found / unchanged: {label}")
+    return new_content
+
+
 def populate_latex():
     from config import RESULTS_DIR, PROJECT_ROOT
-    LATEX_DIR = os.path.join(os.path.dirname(PROJECT_ROOT), "sections")
+    latex_dir = os.path.join(os.path.dirname(PROJECT_ROOT), "sections")
     results_path = os.path.join(RESULTS_DIR, "all_results.json")
-    latex_path = os.path.join(LATEX_DIR, "results.tex")
-    
+    kd_path = os.path.join(RESULTS_DIR, "kd_results.json")
+    latex_path = os.path.join(latex_dir, "results.tex")
+
     if not os.path.exists(results_path):
         print(f"Results not found at {results_path}")
         return
-    
-    with open(results_path, 'r') as f:
-        data = json.load(f)
-    
     if not os.path.exists(latex_path):
         print(f"LaTeX file not found at {latex_path}")
         return
 
-    with open(latex_path, 'r') as f:
-        latex_content = f.read()
-    
-    # Baseline Comparison
-    # XGBoost
-    xgb = data['baseline_comparison']['xgb']
-    latex_content = re.sub(
-        r"XGBoost\s+&\s+[0-9\.,-]+\s+&\s+[0-9\.,-]+\s+&\s+[0-9\.,-]+\s+&\s+[0-9\.,-]+\s+&\s+[0-9\.,-]+",
-        f"XGBoost          & {format_num(xgb['Accuracy'])} & {format_num(xgb['Precision'])} & {format_num(xgb['Recall'])} & {format_num(xgb['F1-Score'])} & {format_num(xgb['AUC-ROC'])}",
-        latex_content
-    )
-    # LightGBM
-    lgbm = data['baseline_comparison']['lgbm']
-    latex_content = re.sub(
-        r"LightGBM\s+&\s+[0-9\.,-]+\s+&\s+[0-9\.,-]+\s+&\s+[0-9\.,-]+\s+&\s+[0-9\.,-]+\s+&\s+[0-9\.,-]+",
-        f"LightGBM         & {format_num(lgbm['Accuracy'])} & {format_num(lgbm['Precision'])} & {format_num(lgbm['Recall'])} & {format_num(lgbm['F1-Score'])} & {format_num(lgbm['AUC-ROC'])}",
-        latex_content
-    )
-    # Random Forest
-    rf = data['baseline_comparison']['rf']
-    latex_content = re.sub(
-        r"Random Forest\s+&\s+[0-9\.,-]+\s+&\s+[0-9\.,-]+\s+&\s+[0-9\.,-]+\s+&\s+[0-9\.,-]+\s+&\s+[0-9\.,-]+",
-        f"Random Forest    & {format_num(rf['Accuracy'])} & {format_num(rf['Precision'])} & {format_num(rf['Recall'])} & {format_num(rf['F1-Score'])} & {format_num(rf['AUC-ROC'])}",
-        latex_content
-    )
-    # Hybrid (Ours)
-    ens = data['ensemble']
-    # Use re.escape for parts that contain backslashes
-    pattern = r"\\textbf\{Hybrid \(Ours\)\}\s+&\s+\\textbf\{[0-9\.,-]+\}\s+&\s+\\textbf\{[0-9\.,-]+\}\s+&\s+\\textbf\{[0-9\.,-]+\}\s+&\s+\\textbf\{[0-9\.,-]+\}\s+&\s+\\textbf\{[0-9\.,-]+\}"
-    replacement = f"\\\\textbf{{Hybrid (Ours)}} & \\\\textbf{{{format_num(ens['Accuracy'])}}} & \\\\textbf{{{format_num(ens['Precision'])}}} & \\\\textbf{{{format_num(ens['Recall'])}}} & \\\\textbf{{{format_num(ens['F1-Score'])}}} & \\\\textbf{{{format_num(ens['AUC-ROC'])}}}"
-    latex_content = re.sub(pattern, replacement, latex_content)
-    
-    # Ablation Study
-    ablation = data['ablation_study']
-    # Stacking (No ENN)
-    a1 = ablation.get('Stacking (No ENN)', {'Accuracy': '--', 'F1-Score': '--', 'FPR': '--', 'AUC-ROC': '--'})
-    latex_content = re.sub(
-        r"Stacking \(No SM\)\s+&\s+[0-9\.,-]+\s+&\s+[0-9\.,-]+\s+&\s+[0-9\.,-]+\s+&\s+[0-9\.,-]+",
-        f"Stacking (No SM)              & {format_num(a1['Accuracy'])} & {format_num(a1['F1-Score'])} & {format_num(a1['FPR'], 6)} & {format_num(a1['AUC-ROC'])}",
-        latex_content
-    )
-    # Soft Voting (with ENN)
-    a2 = ablation.get('Soft Voting (ENN)', {'Accuracy': '--', 'F1-Score': '--', 'FPR': '--', 'AUC-ROC': '--'})
-    latex_content = re.sub(
-        r"Soft Voting \(w/ SM\)\s+&\s+[0-9\.,-]+\s+&\s+[0-9\.,-]+\s+&\s+[0-9\.,-]+\s+&\s+[0-9\.,-]+",
-        f"Soft Voting (w/ SM)           & {format_num(a2['Accuracy'])} & {format_num(a2['F1-Score'])} & {format_num(a2['FPR'], 6)} & {format_num(a2['AUC-ROC'])}",
-        latex_content
-    )
-    # Stacking (XGB+LGBM, no RF)
-    a3 = ablation.get('Stacking (XGB+LGBM only)', {'Accuracy': '--', 'F1-Score': '--', 'FPR': '--', 'AUC-ROC': '--'})
-    latex_content = re.sub(
-        r"Stacking \(w/o RF\)\s+&\s+[0-9\.,-]+\s+&\s+[0-9\.,-]+\s+&\s+[0-9\.,-]+\s+&\s+[0-9\.,-]+",
-        f"Stacking (w/o RF)             & {format_num(a3['Accuracy'])} & {format_num(a3['F1-Score'])} & {format_num(a3['FPR'], 6)} & {format_num(a3['AUC-ROC'])}",
-        latex_content
-    )
-    # Hybrid (Full)
-    a4 = ablation.get('Proposed (Stacking + ENN)', ens)
-    pattern = r"\\textbf\{Hybrid \(Full\)\}\s+&\s+\\textbf\{[0-9\.,-]+\}\s+&\s+\\textbf\{[0-9\.,-]+\}\s+&\s+\\textbf\{[0-9\.,-]+\}\s+&\s+\\textbf\{[0-9\.,-]+\}"
-    replacement = f"\\\\textbf{{Hybrid (Full)}}        & \\\\textbf{{{format_num(a4['Accuracy'])}}} & \\\\textbf{{{format_num(a4['F1-Score'])}}} & \\\\textbf{{{format_num(a4['FPR'], 6)}}} & \\\\textbf{{{format_num(a4['AUC-ROC'])}}}"
-    latex_content = re.sub(pattern, replacement, latex_content)
-
-    # Cross-Validation
-    cv = data['cross_validation']
-    for metric_name in ['Accuracy', 'Precision', 'Recall', 'F1-Score', 'FPR', 'AUC-ROC', 'AUC-PR']:
-        m = cv.get(metric_name)
-        if m:
-            # Escape the $ signs for regex
-            pattern = re.escape(metric_name) + r"\s+&\s+\$[0-9\.,-]+\s+\\pm\s+[0-9\.,-]+\$"
-            replacement = f"{metric_name:12s} & ${format_num(m['mean'])} \\\\pm {format_num(m['std'], 6)}$"
-            latex_content = re.sub(pattern, replacement, latex_content)
-
-    # --- Table Literature Comparison ---
-    # Proposed (Ours)   & Hybrid Ensemble & 99.85 & 99.66 \\
-    pattern = r"\\textbf\{Proposed \(Ours\)\}\s+&\s+\\textbf\{Hybrid Ensemble\}\s+&\s+\\textbf\{[0-9\.,-]+\}\s+&\s+\\textbf\{[0-9\.,-]+\}"
-    replacement = f"\\\\textbf{{Proposed (Ours)}}     & \\\\textbf{{Hybrid Ensemble}} & \\\\textbf{{{format_num(ens['Accuracy']*100, 2)}}} & \\\\textbf{{{format_num(ens['F1-Score']*100, 2)}}}"
-    latex_content = re.sub(pattern, replacement, latex_content)
-
-    # Knowledge Distillation
-    kd_path = os.path.join(RESULTS_DIR, "kd_results.json")
+    with open(results_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    kd = None
     if os.path.exists(kd_path):
-        with open(kd_path, 'r') as f:
-            kd_data = json.load(f)
-        
-        teacher = kd_data['teacher']
-        student = kd_data['student']
-        
-        latex_content = re.sub(
-            r"Teacher \(Ens\.\)\s+&\s+[0-9\.,-]+\s+&\s+[0-9\.,-]+\s+&\s+[0-9\.,-]+\s+&\s+[0-9\.,-]+",
-            f"Teacher (Ens.)     & {format_num(teacher['Accuracy'])} & {format_num(teacher['F1-Score'])} & {format_num(teacher['Inference_ms_per_1k'], 2)} & {format_num(teacher.get('Size_MB', 0), 2)}",
-            latex_content
-        )
-        # Also handle -- placeholders
-        latex_content = re.sub(
-            r"Teacher \(Ens\.\)\s+&\s+--\s+&\s+--\s+&\s+--\s+&\s+--",
-            f"Teacher (Ens.)     & {format_num(teacher['Accuracy'])} & {format_num(teacher['F1-Score'])} & {format_num(teacher['Inference_ms_per_1k'], 2)} & {format_num(teacher.get('Size_MB', 0), 2)}",
-            latex_content
-        )
-        latex_content = re.sub(
-            r"Student \(DT\)\s+&\s+[0-9\.,-]+\s+&\s+[0-9\.,-]+\s+&\s+[0-9\.,-]+\s+&\s+[0-9\.,-]+",
-            f"Student (DT)       & {format_num(student['Accuracy'])} & {format_num(student['F1-Score'])} & {format_num(student['Inference_ms_per_1k'], 2)} & {format_num(student.get('Size_MB', 0), 4)}",
-            latex_content
-        )
-        latex_content = re.sub(
-            r"Student \(DT\)\s+&\s+--\s+&\s+--\s+&\s+--\s+&\s+--",
-            f"Student (DT)       & {format_num(student['Accuracy'])} & {format_num(student['F1-Score'])} & {format_num(student['Inference_ms_per_1k'], 2)} & {format_num(student.get('Size_MB', 0), 4)}",
-            latex_content
-        )
+        with open(kd_path, "r", encoding="utf-8") as f:
+            kd = json.load(f)
 
-    with open(latex_path, 'w') as f:
-        f.write(latex_content)
+    with open(latex_path, "r", encoding="utf-8") as f:
+        latex = f.read()
+
+    base = data.get("baseline_comparison", {})
+    ens = data.get("ensemble", {})
+
+    # ===================================================================
+    # Table 1: tab:overall_results — Acc. & F1 & AUC & Trễ (ms/1k) & Size (MB)
+    # ===================================================================
+
+    def _plain_row(name, m):
+        """XGBoost/LightGBM/Random Forest rows (no bold), latency/size = --."""
+        nonlocal latex
+        # name & cell & cell & cell & cell & cell
+        pattern = (re.escape(name) + r"\s*&\s*" + _CELL + r"\s*&\s*" + _CELL
+                   + r"\s*&\s*" + _CELL + r"\s*&\s*" + _CELL + r"\s*&\s*" + _CELL)
+
+        def build(_):
+            return (f"{name:16s} & {format_num(m.get('Accuracy'))} "
+                    f"& {format_num(m.get('F1-Score'))} "
+                    f"& {format_num(m.get('AUC-ROC'))} & -- & --")
+
+        latex = _sub_once(latex, pattern, build, f"Table1 row {name}")
+
+    if "xgb" in base:
+        _plain_row("XGBoost", base["xgb"])
+    if "lgbm" in base:
+        _plain_row("LightGBM", base["lgbm"])
+    if "rf" in base:
+        _plain_row("Random Forest", base["rf"])
+
+    # Stacking (Teacher): Acc/F1/AUC bold; latency & size plain (from kd teacher)
+    if ens:
+        teacher_lat = kd["teacher"]["Inference_ms_per_1k"] if kd else "--"
+        teacher_size = kd["teacher"]["Size_MB"] if kd else "--"
+        pattern = (r"\\textbf\{Stacking \(Teacher\)\}\s*&\s*\\textbf\{" + _CELL
+                   + r"\}\s*&\s*\\textbf\{" + _CELL + r"\}\s*&\s*\\textbf\{" + _CELL
+                   + r"\}\s*&\s*" + _CELL + r"\s*&\s*" + _CELL)
+
+        def build_teacher(_):
+            return (r"\textbf{Stacking (Teacher)} "
+                    f"& \\textbf{{{format_num(ens.get('Accuracy'))}}} "
+                    f"& \\textbf{{{format_num(ens.get('F1-Score'))}}} "
+                    f"& \\textbf{{{format_num(ens.get('AUC-ROC'))}}} "
+                    f"& {format_num(teacher_lat, 2)} & {format_num(teacher_size, 2)}")
+
+        latex = _sub_once(latex, pattern, build_teacher, "Table1 Stacking (Teacher)")
+
+    # Student (DT): all five cells bold, from kd student (soft-distilled)
+    if kd and "student" in kd:
+        st = kd["student"]
+        pattern = (r"\\textbf\{Student \(DT\)\}\s*&\s*\\textbf\{" + _CELL
+                   + r"\}\s*&\s*\\textbf\{" + _CELL + r"\}\s*&\s*\\textbf\{" + _CELL
+                   + r"\}\s*&\s*\\textbf\{" + _CELL + r"\}\s*&\s*\\textbf\{" + _CELL + r"\}")
+
+        def build_student(_):
+            return (r"\textbf{Student (DT)} "
+                    f"& \\textbf{{{format_num(st.get('Accuracy'))}}} "
+                    f"& \\textbf{{{format_num(st.get('F1-Score'))}}} "
+                    f"& \\textbf{{{format_num(st.get('AUC-ROC'))}}} "
+                    f"& \\textbf{{{format_num(st.get('Inference_ms_per_1k'), 2)}}} "
+                    f"& \\textbf{{{format_num(st.get('Size_MB'), 4)}}}")
+
+        latex = _sub_once(latex, pattern, build_student, "Table1 Student (DT)")
+
+    # ===================================================================
+    # Table 2: tab:literature_comparison — Acc. (%) & F1 (%)
+    # ===================================================================
+    if ens:
+        pattern = (r"(\\textbf\{Stacking Teacher\}\s*&\s*\\textbf\{Hybrid Ensemble\}\s*&\s*)"
+                   r"\\textbf\{" + _CELL + r"\}\s*&\s*\\textbf\{" + _CELL + r"\}")
+
+        def build_lit_teacher(m):
+            return (m.group(1)
+                    + f"\\textbf{{{format_num(ens.get('Accuracy', 0) * 100, 2)}}} "
+                    f"& \\textbf{{{format_num(ens.get('F1-Score', 0) * 100, 2)}}}")
+
+        latex = _sub_once(latex, pattern, build_lit_teacher, "Table2 Stacking Teacher")
+
+    if kd and "student" in kd:
+        st = kd["student"]
+        pattern = (r"(\\textbf\{Student DT \(Chưng cất\)\}\s*&\s*\\textbf\{Lightweight DT\}\s*&\s*)"
+                   r"\\textbf\{" + _CELL + r"\}\s*&\s*\\textbf\{" + _CELL + r"\}")
+
+        def build_lit_student(m):
+            return (m.group(1)
+                    + f"\\textbf{{{format_num(st.get('Accuracy', 0) * 100, 2)}}} "
+                    f"& \\textbf{{{format_num(st.get('F1-Score', 0) * 100, 2)}}}")
+
+        latex = _sub_once(latex, pattern, build_lit_student, "Table2 Student DT")
+
+    with open(latex_path, "w", encoding="utf-8") as f:
+        f.write(latex)
     print(f"Successfully populated {latex_path}")
+
 
 if __name__ == "__main__":
     populate_latex()

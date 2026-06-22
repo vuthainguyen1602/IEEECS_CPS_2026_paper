@@ -10,7 +10,7 @@ x_{norm} = \frac{x_i - \tilde{x}}{\text{IQR}(X)}
 trong đó $\tilde{x}$ là trung vị và $\text{IQR}(X)$ là khoảng tứ phân vị.
 
 \subsubsection{Chiến lược lấy mẫu lai (RUS kết hợp ENN)}
-Để giải quyết mất cân bằng lớn (lớp thiểu số $<0,01\%$), chúng tôi áp dụng chiến lược lấy mẫu lai. Đầu tiên, kỹ thuật Lấy mẫu giảm ngẫu nhiên (Random Under-Sampling - RUS) được sử dụng để giảm quy mô lớp đa số, loại bỏ bớt các mẫu cách xa ranh giới quyết định. Kế tiếp, bộ lọc ENN~\cite{wilson1972asymptotic} loại bỏ các mẫu bị nhiễu cục bộ dựa trên quy tắc 3 láng giềng gần nhất. Quy trình này (Thuật toán~\ref{algo:preprocessing}) tạo ra tập dữ liệu cân bằng với ranh giới phân lớp sắc nét.
+Để giải quyết mất cân bằng nghiêm trọng giữa lớp tấn công và lớp bình thường, chúng tôi áp dụng chiến lược lấy mẫu lai gồm hai bước. Đầu tiên, kỹ thuật Lấy mẫu giảm ngẫu nhiên (Random Under-Sampling -- RUS) loại bỏ \emph{ngẫu nhiên} (theo phân phối đều, không dựa trên khoảng cách) một phần mẫu của lớp đa số nhằm đưa hai lớp về quy mô tương đương và giảm chi phí tính toán cho bước sau. Kế tiếp, bộ lọc ENN~\cite{wilson1972asymptotic} làm sạch ranh giới: với mỗi mẫu, nếu nhãn đa số trong 3 láng giềng gần nhất khác với nhãn của nó thì mẫu bị coi là nhiễu cục bộ và bị loại bỏ. Quy trình này (Thuật toán~\ref{algo:preprocessing}) tạo ra tập dữ liệu cân bằng với ranh giới phân lớp sắc nét. Lưu ý rằng toàn bộ quá trình lấy mẫu lai chỉ áp dụng trên tập huấn luyện; tập kiểm thử được giữ nguyên phân phối gốc để tránh rò rỉ dữ liệu.
 
 \begin{algorithm}[hbt!]
 \SetAlgoLined
@@ -36,23 +36,23 @@ Kiến trúc Stacking gồm hai tầng:
 \subsubsection{Tầng 1 (Mô hình tổng hợp)} Đầu ra xác suất từ Tầng 0 tạo thành ma trận đặc trưng $Z_i = [P_{XGB}, P_{LGBM}, P_{RF}]$. Bộ phân loại Hồi quy Logistic tổng hợp dự đoán qua hàm sigmoid: $\hat{Y} = \sigma(W \cdot Z_i + b)$. Kiến trúc này tăng độ chính xác và giảm cảnh báo giả.
 
 \subsection{Chưng cất tri thức sang mô hình Student}
-Mô hình Stacking Teacher ($\mathcal{E}$) có độ trễ lớn, không phù hợp cho thiết bị biên. Do đó, chúng tôi áp dụng chưng cất tri thức dạng Mô hình thay thế (Surrogate Model) để huấn luyện một mô hình Student (Cây quyết định nông). Cây quyết định được chọn vì tính gọn nhẹ và tốc độ duyệt $O(\log n)$.
+Mô hình Stacking Teacher ($\mathcal{E}$) có độ trễ lớn, không phù hợp cho thiết bị biên. Do đó, chúng tôi áp dụng chưng cất tri thức với \emph{nhãn mềm} (soft-label distillation) để chuyển giao tri thức sang một mô hình Student gọn nhẹ. Khác với việc chỉ sao chép nhãn cứng (hard label), nhãn mềm là xác suất dự đoán liên tục của Teacher, mang theo thông tin về độ tin cậy và mức độ gần ranh giới của từng mẫu (thường gọi là ``dark knowledge'') --- chính phần tri thức này giúp Student khái quát hóa tốt hơn.
 
-Cụ thể, mô hình Teacher tổng hợp nhãn mục tiêu mới $\hat{Y}_{teacher}$ bằng cách tạo ra các dự đoán nhãn cứng (hard labels) trên tập huấn luyện. Sau đó, mô hình Student $M_{student}$ học trực tiếp trên bộ nhãn này (Thuật toán~\ref{algo:kd}).
+Cụ thể, với mỗi mẫu $x_i$ trong tập huấn luyện, Teacher sinh ra một mục tiêu mềm $p_i = \mathcal{E}.predict\_proba(x_i)$ là xác suất thuộc lớp tấn công. Một Cây quyết định hồi quy (Decision Tree Regressor) $\mathcal{R}$ được huấn luyện để xấp xỉ trường xác suất này; ở giai đoạn suy luận, dự đoán nhị phân được lấy bằng cách áp ngưỡng $0,5$ lên đầu ra của $\mathcal{R}$ (Thuật toán~\ref{algo:kd}). Cây quyết định được chọn làm Student vì tính gọn nhẹ và độ phức tạp suy luận $O(\log n)$. Để khẳng định giá trị của bước chưng cất, chúng tôi còn so sánh Student chưng cất với một Cây quyết định cùng cấu hình nhưng được huấn luyện trực tiếp trên nhãn gốc (không qua Teacher) trong phần thực nghiệm.
 
 \begin{algorithm}[ht]
 \DontPrintSemicolon
 \SetAlgoLined
-\KwIn{Tập huấn luyện $X_{train} = \{x_1, \dots, x_N\}$, Mô hình Giáo viên $\mathcal{E}$}
+\KwIn{Tập huấn luyện $X_{train} = \{x_1, \dots, x_N\}$, Mô hình Giáo viên $\mathcal{E}$, ngưỡng $\tau = 0{,}5$}
 \KwOut{Mô hình Học viên $M_{student}$}
-Khởi tạo mảng dự đoán $\hat{Y}_{teacher} \leftarrow$ mảng rỗng kích thước $N$\;
+Khởi tạo mảng mục tiêu mềm $P_{soft} \leftarrow$ mảng rỗng kích thước $N$\;
 \For{$i = 1 \dots N$}{
-    $p_i \leftarrow \mathcal{E}.predict\_proba(x_i)$\;
-    $\hat{Y}_{teacher}[i] \leftarrow \arg\max(p_i)$ \;
+    $P_{soft}[i] \leftarrow \mathcal{E}.predict\_proba(x_i)$ \tcp*{xác suất lớp tấn công}
 }
-Khởi tạo Cây quyết định $M_{student}$ (max\_depth=$d$)\;
-$M_{student}.fit(X_{train}, \hat{Y}_{teacher})$ \;
+Khởi tạo Cây quyết định hồi quy $\mathcal{R}$ (max\_depth=$d$)\;
+$\mathcal{R}.fit(X_{train}, P_{soft})$ \tcp*{học nhãn mềm}
+Định nghĩa $M_{student}(x) = \mathbb{1}\!\left[\mathcal{R}(x) \geq \tau\right]$\;
 \Return $M_{student}$ \;
-\caption{Chưng cất tri thức Giáo viên - Học viên}
+\caption{Chưng cất tri thức nhãn mềm Giáo viên - Học viên}
 \label{algo:kd}
 \end{algorithm}
