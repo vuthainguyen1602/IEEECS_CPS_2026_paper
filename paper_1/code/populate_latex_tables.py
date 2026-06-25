@@ -84,7 +84,7 @@ def populate_latex():
         def build(_):
             return (f"{name:16s} & {format_num(m.get('Accuracy'))} "
                     f"& {format_num(m.get('F1-Score'))} "
-                    f"& {format_num(m.get('AUC-ROC'))} & -- & --")
+                    f"& {format_num(m.get('AUC-PR'))} & -- & --")
 
         latex = _sub_once(latex, pattern, build, f"Table1 row {name}")
 
@@ -107,7 +107,7 @@ def populate_latex():
             return (r"\textbf{Stacking (Teacher)} "
                     f"& \\textbf{{{format_num(ens.get('Accuracy'))}}} "
                     f"& \\textbf{{{format_num(ens.get('F1-Score'))}}} "
-                    f"& \\textbf{{{format_num(ens.get('AUC-ROC'))}}} "
+                    f"& \\textbf{{{format_num(ens.get('AUC-PR'))}}} "
                     f"& {format_num(teacher_lat, 2)} & {format_num(teacher_size, 2)}")
 
         latex = _sub_once(latex, pattern, build_teacher, "Table1 Stacking (Teacher)")
@@ -123,7 +123,7 @@ def populate_latex():
             return (r"\textbf{Student (DT)} "
                     f"& \\textbf{{{format_num(st.get('Accuracy'))}}} "
                     f"& \\textbf{{{format_num(st.get('F1-Score'))}}} "
-                    f"& \\textbf{{{format_num(st.get('AUC-ROC'))}}} "
+                    f"& \\textbf{{{format_num(st.get('AUC-PR'))}}} "
                     f"& \\textbf{{{format_num(st.get('Inference_ms_per_1k'), 2)}}} "
                     f"& \\textbf{{{format_num(st.get('Size_MB'), 4)}}}")
 
@@ -172,7 +172,7 @@ def populate_latex():
             return (f"{label} & {format_num(m.get('Accuracy'))} "
                     f"& {format_num(m.get('F1-Score'))} "
                     f"& {format_num(m.get('FPR'), 6)} "
-                    f"& {format_num(m.get('AUC-ROC'))}")
+                    f"& {format_num(m.get('AUC-PR'))}")
 
         latex = _sub_once(latex, pattern, build, f"Ablation {key}")
 
@@ -192,7 +192,7 @@ def populate_latex():
                     f"& \\textbf{{{format_num(mp.get('Accuracy'))}}} "
                     f"& \\textbf{{{format_num(mp.get('F1-Score'))}}} "
                     f"& \\textbf{{{format_num(mp.get('FPR'), 6)}}} "
-                    f"& \\textbf{{{format_num(mp.get('AUC-ROC'))}}}")
+                    f"& \\textbf{{{format_num(mp.get('AUC-PR'))}}}")
 
         latex = _sub_once(latex, pattern, build_abl_prop, "Ablation Proposed")
 
@@ -205,19 +205,20 @@ def populate_latex():
             return
         m = kd[key]
         cells = [format_num(m.get('Accuracy')), format_num(m.get('F1-Score')),
-                 format_num(m.get('F1-Macro')),
+                 format_num(m.get('F1-Macro')), format_num(m.get('FPR'), 6),
                  format_num(m.get('Inference_ms_per_1k'), 2)]
         if bold:
             pattern = (r"\\textbf\{" + re.escape(label) + r"\}\s*&\s*\\textbf\{" + _CELL
                        + r"\}\s*&\s*\\textbf\{" + _CELL + r"\}\s*&\s*\\textbf\{" + _CELL
-                       + r"\}\s*&\s*\\textbf\{" + _CELL + r"\}")
+                       + r"\}\s*&\s*\\textbf\{" + _CELL + r"\}\s*&\s*\\textbf\{" + _CELL
+                       + r"\}")
 
             def build(_):
                 return (r"\textbf{" + label + "} & "
                         + " & ".join(f"\\textbf{{{c}}}" for c in cells))
         else:
             pattern = (re.escape(label) + r"\s*&\s*" + _CELL + r"\s*&\s*" + _CELL
-                       + r"\s*&\s*" + _CELL + r"\s*&\s*" + _CELL)
+                       + r"\s*&\s*" + _CELL + r"\s*&\s*" + _CELL + r"\s*&\s*" + _CELL)
 
             def build(_):
                 return f"{label} & " + " & ".join(cells)

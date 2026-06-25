@@ -51,7 +51,7 @@ CV_USE_FAST_SAMPLER = True    # If True, use RandomUnderSampler instead of SMOTE
 # XGBoost
 XGB_PARAMS = dict(
     n_estimators=100, learning_rate=0.1, max_depth=6,
-    tree_method='hist', n_jobs=-1, use_label_encoder=False,
+    tree_method='hist', n_jobs=-1,
     eval_metric='logloss', random_state=RANDOM_SEED, verbosity=1
 )
 
@@ -61,14 +61,14 @@ LGBM_PARAMS = dict(
     n_jobs=-1, random_state=RANDOM_SEED, verbose=1
 )
 
-# Random Forest
+# Random Forest (giảm còn 100 cây để tăng tốc; thường gần như không đổi kết quả)
 RF_PARAMS = dict(
-    n_estimators=200, max_depth=20, min_samples_split=5,
+    n_estimators=100, max_depth=20, min_samples_split=5,
     min_samples_leaf=2, n_jobs=-1, random_state=RANDOM_SEED, verbose=0
 )
 
 # Stacking Meta-Learner
-STACKING_CV = 10               # Internal CV folds for StackingClassifier
+STACKING_CV = 5                # Internal CV folds for StackingClassifier (5 đủ tốt, nhanh gấp đôi so với 10)
 
 # Knowledge Distillation — Student Model
 STUDENT_MAX_DEPTH = 8

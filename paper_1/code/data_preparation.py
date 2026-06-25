@@ -113,6 +113,7 @@ def save_splits(df: pd.DataFrame, train_path: str, test_path: str) -> None:
         test_size=0.2,
         random_state=RANDOM_SEED,
         shuffle=True,
+        stratify=df["label_binary"],
     )
 
     print(f"\nTraining set: {len(train_df):,} samples")

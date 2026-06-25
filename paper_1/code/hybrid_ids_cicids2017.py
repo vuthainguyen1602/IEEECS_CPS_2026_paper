@@ -124,8 +124,8 @@ def load_and_preprocess(train_filepath, test_filepath):
     log_message(f"Minority class = {minority_label} "
                 f"({minority_ratio:.4f}% of training samples)")
 
-    X_train.fillna(0, inplace=True)
-    X_test.fillna(0, inplace=True)
+    X_train = X_train.fillna(0)
+    X_test = X_test.fillna(0)
 
     del train_df, test_df
     gc.collect()
@@ -135,15 +135,18 @@ def load_and_preprocess(train_filepath, test_filepath):
     X_train_scaled = scaler.fit_transform(X_train)
     X_test_scaled = scaler.transform(X_test)
 
-    return X_train_scaled, X_test_scaled, y_train, y_test, X_train.shape[1], feature_cols
+    # Cũng trả về X_train CHƯA chuẩn hóa để K-Fold CV fit scaler trong từng fold
+    # (tránh rò rỉ thống kê của fold validation vào bộ chuẩn hóa).
+    return (X_train_scaled, X_test_scaled, y_train, y_test,
+            X_train.shape[1], feature_cols, X_train.values)
 
 
 def balance_training_data(X_train, y_train, sample_frac=1.0):
-    """Apply SMOTEENN resampling with disk caching.
+    """Apply the hybrid RUS + ENN resampling with disk caching.
 
-    Corresponds to Section III-B. Uses SMOTE for oversampling the
-    minority class followed by Edited Nearest Neighbours (ENN) for
-    cleaning noisy samples near class boundaries.
+    Corresponds to Section III-B. First applies Random Under-Sampling (RUS)
+    to the majority class, then Edited Nearest Neighbours (ENN) to clean
+    noisy samples near class boundaries. (No SMOTE oversampling is used.)
 
     Parameters
     ----------
@@ -249,7 +252,7 @@ def build_ensemble(base_models):
     ensemble = StackingClassifier(
         estimators=base_models,
         final_estimator=LogisticRegression(class_weight='balanced', n_jobs=-1),
-        cv=STACKING_CV, n_jobs=-1, verbose=1,
+        cv=STACKING_CV, n_jobs=1, verbose=1,  # n_jobs=1: để base model dùng core, tránh nested -1 gây tranh CPU/RAM
         stack_method='predict_proba'
     )
     return ensemble
@@ -280,7 +283,7 @@ def compute_metrics(y_true, y_pred, y_prob=None):
     rec_pc = recall_score(y_true, y_pred, average=None, labels=[0, 1], zero_division=0)
     f1_pc = f1_score(y_true, y_pred, average=None, labels=[0, 1], zero_division=0)
 
-    cm = confusion_matrix(y_true, y_pred)
+    cm = confusion_matrix(y_true, y_pred, labels=[0, 1])
     tn, fp, fn, tp = cm.ravel()
     fpr = fp / (fp + tn) if (fp + tn) > 0 else 0
 
@@ -646,8 +649,8 @@ def run_ablation_study(X_train_raw, y_train_raw, X_train_bal, y_train_bal, X_tes
     abl1_ensemble = StackingClassifier(
         estimators=base_1,
         final_estimator=LogisticRegression(class_weight='balanced', max_iter=1000, n_jobs=-1),
-        cv=STACKING_CV,
-        n_jobs=-1,
+        cv=3,  # ablation trên toàn bộ dữ liệu thô rất nặng -> cv nhỏ
+        n_jobs=1,
         stack_method='predict_proba'
     )
     abl1_ensemble.fit(X_train_raw, y_train_raw)
@@ -662,7 +665,7 @@ def run_ablation_study(X_train_raw, y_train_raw, X_train_bal, y_train_bal, X_tes
     # --- Experiment 2: Soft Voting instead of Stacking ---
     log_message("[Ablation 2/4] Training Soft Voting WITH ENN...")
     base_2 = build_base_models(num_features)
-    voting = VotingClassifier(estimators=base_2, voting='soft', n_jobs=-1)
+    voting = VotingClassifier(estimators=base_2, voting='soft', n_jobs=1)
     start = time.time()
     voting.fit(X_train_bal, y_train_bal)
     t2 = time.time() - start
@@ -679,8 +682,8 @@ def run_ablation_study(X_train_raw, y_train_raw, X_train_bal, y_train_bal, X_tes
     log_message("[Ablation 3/4] Training Stacking (XGB + LGBM only, no RF)...")
     xgb_clf = XGBClassifier(
         n_estimators=100, learning_rate=0.1, max_depth=6,
-        tree_method='hist', n_jobs=-1, use_label_encoder=False,
-        eval_metric='logloss', random_state=42, verbosity=0
+        tree_method='hist', n_jobs=-1,
+        eval_metric='logloss', random_state=RANDOM_SEED, verbosity=0
     )
     lgb_clf = LGBMClassifier(
         n_estimators=100, learning_rate=0.1, max_depth=6,
@@ -690,7 +693,7 @@ def run_ablation_study(X_train_raw, y_train_raw, X_train_bal, y_train_bal, X_tes
     ens_3 = StackingClassifier(
         estimators=base_3,
         final_estimator=LogisticRegression(class_weight='balanced', n_jobs=-1),
-        cv=STACKING_CV, n_jobs=-1, verbose=0,
+        cv=3, n_jobs=1, verbose=0,
         stack_method='predict_proba'
     )
     start = time.time()
@@ -732,18 +735,19 @@ def run_kfold_cv(X_data, y_data, num_features, k=5):
 
     for fold_idx, (train_idx, val_idx) in enumerate(skf.split(X_data, y_data)):
         log_message(f"  [Fold {fold_idx + 1}/{k}] Processing...")
-        
+
+        # Seed độc lập theo từng fold để các fold là những lần rút mẫu độc lập
+        # (tránh độ lệch chuẩn nhỏ giả tạo do dùng chung trạng thái RNG).
+        rng = np.random.RandomState(RANDOM_SEED + fold_idx)
         if CV_SAMPLE_FRACTION < 1.0:
-            np.random.seed(42)
             n_samples = int(len(train_idx) * CV_SAMPLE_FRACTION)
-            train_idx_sampled = np.random.choice(train_idx, n_samples, replace=False)
-            X_fold_train = X_data[train_idx_sampled]
-            y_fold_train = y_data.iloc[train_idx_sampled]
-        else:
-            X_fold_train = X_data[train_idx]
-            y_fold_train = y_data.iloc[train_idx]
-            
-        X_fold_val = X_data[val_idx]
+            train_idx = rng.choice(train_idx, n_samples, replace=False)
+
+        # X_data ở đây là dữ liệu CHƯA chuẩn hóa: fit RobustScaler trong fold.
+        fold_scaler = RobustScaler()
+        X_fold_train = fold_scaler.fit_transform(X_data[train_idx])
+        X_fold_val = fold_scaler.transform(X_data[val_idx])
+        y_fold_train = y_data.iloc[train_idx]
         y_fold_val = y_data.iloc[val_idx]
 
         if CV_USE_FAST_SAMPLER:
@@ -848,7 +852,7 @@ def main():
     total_start = time.time()
 
     # Step 1: Preprocess
-    X_train_scaled, X_test_scaled, y_train, y_test, num_features, feature_names = \
+    X_train_scaled, X_test_scaled, y_train, y_test, num_features, feature_names, X_train_unscaled = \
         load_and_preprocess(train_path, test_path)
 
     # Step 2: Balance Datasets
@@ -883,6 +887,31 @@ def main():
     ensemble_metrics['Train Time (s)'] = round(train_elapsed, 2)
     print_metrics("PROPOSED HYBRID ENSEMBLE", ensemble_metrics)
 
+    # --- Ý nghĩa thống kê: khoảng tin cậy bootstrap + McNemar so với mô hình cơ sở ---
+    log_message("Computing statistical significance (bootstrap CI + McNemar)...")
+    from stats_utils import mcnemar_pvalue, bootstrap_ci
+    y_test_arr = np.asarray(y_test)
+    f1_mean, f1_lo, f1_hi = bootstrap_ci(
+        y_test_arr, y_pred, lambda yt, yp: f1_score(yt, yp, zero_division=0))
+    significance = {
+        'F1_bootstrap_CI95': {'mean': f1_mean, 'low': f1_lo, 'high': f1_hi},
+        'mcnemar_vs_baseline': {},
+    }
+    if y_prob is not None:
+        ap_mean, ap_lo, ap_hi = bootstrap_ci(
+            y_test_arr, y_pred,
+            lambda yt, yp, pr: average_precision_score(yt, pr), y_prob=y_prob)
+        significance['AUC_PR_bootstrap_CI95'] = {'mean': ap_mean, 'low': ap_lo, 'high': ap_hi}
+    for name, model in trained_models.items():
+        try:
+            base_pred = model.predict(X_test_scaled)
+            p, n01, n10 = mcnemar_pvalue(y_test_arr, y_pred, base_pred)
+            significance['mcnemar_vs_baseline'][name] = {'p_value': p, 'n01': n01, 'n10': n10}
+            log_message(f"  McNemar ensemble vs {name}: p={p:.4g} (n01={n01}, n10={n10})")
+        except Exception as e:
+            log_message(f"  McNemar vs {name} skipped: {e}")
+    log_message(f"  Proposed F1 95% CI: [{f1_lo:.4f}, {f1_hi:.4f}]")
+
     plot_roc_and_pr_curves(baseline_results, X_test_scaled, y_test, trained_models, ensemble_model)
 
     plot_feature_importance(trained_models, feature_names)
@@ -895,10 +924,13 @@ def main():
     ablation_results['Proposed (Stacking + ENN)'] = ensemble_metrics
 
 
-    cv_summary, fold_metrics = run_kfold_cv(X_train_scaled, y_train, num_features, k=KFOLD_K)
+    cv_summary, fold_metrics = run_kfold_cv(X_train_unscaled, y_train, num_features, k=KFOLD_K)
 
     # Save All Results
     all_results = save_results(baseline_results, ensemble_metrics, ablation_results, cv_summary)
+    all_results['significance'] = significance
+    with open(os.path.join(RESULTS_DIR, "all_results.json"), 'w') as f:
+        json.dump(all_results, f, indent=2)
 
     # Populate LaTeX Tables
     try:

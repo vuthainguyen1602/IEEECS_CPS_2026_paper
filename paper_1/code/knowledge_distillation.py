@@ -89,15 +89,8 @@ def main():
         return
 
     print("Loading and Preprocessing Data...")
-    X_train_scaled, X_test_scaled, y_train, y_test, _, _ = \
+    X_train_scaled, X_test_scaled, y_train, y_test, _, _, _ = \
         load_and_preprocess(TRAIN_PATH, TEST_PATH)
-
-    # Balanced ground-truth data (RUS+ENN), reused from cache, for the
-    # Student-Direct baseline so it is trained like the Teacher was.
-    print("Preparing balanced ground-truth data for the direct baseline...")
-    X_train_bal, y_train_bal = balance_training_data(
-        X_train_scaled, y_train, sample_frac=SAMPLE_FRACTION
-    )
 
     print("Loading Teacher Model (Hybrid Ensemble)...")
     teacher_model = joblib.load(teacher_path)
@@ -133,15 +126,19 @@ def main():
     )
     student_hard.fit(X_train_scaled, teacher_hard)
 
-    # === Student-Direct: trained on balanced ground truth (NO teacher) ===
+    # === Student-Direct: trained on the SAME inputs (full training set) on
+    # ground-truth labels, WITHOUT the Teacher. We use class_weight='balanced'
+    # to cope with imbalance so the comparison isolates the label source
+    # (teacher soft vs teacher hard vs ground truth) on identical data. ===
     print(f"Training Student-Direct (DT Classifier on ground-truth labels, "
           f"depth={STUDENT_MAX_DEPTH})...")
     student_direct = DecisionTreeClassifier(
         max_depth=STUDENT_MAX_DEPTH,
         min_samples_split=STUDENT_MIN_SAMPLES_SPLIT,
+        class_weight="balanced",
         random_state=RANDOM_SEED,
     )
-    student_direct.fit(X_train_bal, y_train_bal)
+    student_direct.fit(X_train_scaled, y_train)
 
     # --- Persist students and record sizes ---
     os.makedirs(MODELS_DIR, exist_ok=True)
@@ -164,13 +161,31 @@ def main():
     m_teacher = compute_metrics(y_test_arr, teacher_pred, teacher_prob)
 
     soft_prob_test = soft_proba(X_test_scaled)
-    m_soft = compute_metrics(y_test_arr, (soft_prob_test >= 0.5).astype(int), soft_prob_test)
+    soft_pred = (soft_prob_test >= 0.5).astype(int)
+    m_soft = compute_metrics(y_test_arr, soft_pred, soft_prob_test)
 
     hard_prob_test = student_hard.predict_proba(X_test_scaled)[:, 1]
-    m_hard = compute_metrics(y_test_arr, student_hard.predict(X_test_scaled), hard_prob_test)
+    hard_pred = student_hard.predict(X_test_scaled)
+    m_hard = compute_metrics(y_test_arr, hard_pred, hard_prob_test)
 
     direct_prob_test = student_direct.predict_proba(X_test_scaled)[:, 1]
-    m_direct = compute_metrics(y_test_arr, student_direct.predict(X_test_scaled), direct_prob_test)
+    direct_pred = student_direct.predict(X_test_scaled)
+    m_direct = compute_metrics(y_test_arr, direct_pred, direct_prob_test)
+
+    # --- Ý nghĩa thống kê: bước chưng cất có thực sự giúp ích? ---
+    from stats_utils import mcnemar_pvalue, bootstrap_ci
+    from sklearn.metrics import f1_score as _f1
+    p_sd, sd01, sd10 = mcnemar_pvalue(y_test_arr, soft_pred, direct_pred)
+    p_sh, sh01, sh10 = mcnemar_pvalue(y_test_arr, soft_pred, hard_pred)
+    f1m, f1lo, f1hi = bootstrap_ci(y_test_arr, soft_pred,
+                                   lambda yt, yp: _f1(yt, yp, zero_division=0))
+    significance = {
+        "soft_vs_direct_mcnemar_p": p_sd,
+        "soft_vs_hard_mcnemar_p": p_sh,
+        "student_soft_F1_CI95": {"mean": f1m, "low": f1lo, "high": f1hi},
+    }
+    print(f"McNemar Soft-vs-Direct: p={p_sd:.4g} | Soft-vs-Hard: p={p_sh:.4g}")
+    print(f"Student-Soft F1 95% CI: [{f1lo:.4f}, {f1hi:.4f}]")
 
     # --- Real-time inference latency (batch_size = 1) ---
     print("Measuring real-time inference latency (batch_size=1)...")
@@ -237,6 +252,7 @@ def main():
         "distillation_method": "soft-label (DecisionTreeRegressor on teacher P(attack))",
         "gain_soft_minus_direct_F1": float(m_soft['F1-Score'] - m_direct['F1-Score']),
         "gain_soft_minus_hard_F1": float(m_soft['F1-Score'] - m_hard['F1-Score']),
+        "significance": significance,
     }
 
     os.makedirs(RESULTS_DIR, exist_ok=True)
